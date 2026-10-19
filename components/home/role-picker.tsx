@@ -1,8 +1,9 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { ArrowRight, Loader2, Search, Star } from "lucide-react"
-import { chooseRole } from "@/app/actions"
+import { chooseDoctor, choosePatient } from "@/app/actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -13,12 +14,18 @@ export type PersonOption = { key: string; name: string; detail: string }
 
 /** El primer elemento de cada lista es la persona recomendada para la demo. */
 export function RolePicker({ patients, doctors }: { patients: PersonOption[]; doctors: PersonOption[] }) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [target, setTarget] = useState<string | null>(null)
 
+  // Paciente/Médico guardan la persona en su cookie; el resto de roles es solo navegar.
   function enter(role: Role, actor?: string) {
     setTarget(`${role}:${actor ?? ""}`)
-    startTransition(() => chooseRole(role, actor))
+    startTransition(() => {
+      if (role === "paciente" && actor) return choosePatient(actor)
+      if (role === "medico" && actor) return chooseDoctor(actor)
+      router.push(`/${role}`)
+    })
   }
   const loading = (role: Role, actor?: string) => pending && target === `${role}:${actor ?? ""}`
 

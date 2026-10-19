@@ -3,23 +3,23 @@
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import { ACTOR_COOKIE, ROLE_COOKIE, defaultActor, isRole, needsActor } from "@/lib/roles"
+import { DOCTOR_COOKIE, PATIENT_COOKIE } from "@/lib/roles"
 import { supabase } from "@/lib/supabase"
 
 const COOKIE_OPTIONS = { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 30 } as const
 
-/** Guarda rol (y persona, si aplica) y entra a la pantalla del rol. */
-export async function chooseRole(role: string, actor?: string) {
-  if (!isRole(role)) throw new Error("Rol no válido")
+/** Guarda el paciente elegido (matrícula) y entra a su pantalla. */
+export async function choosePatient(matricula: string) {
+  if (!matricula) throw new Error("Paciente no válido")
+  ;(await cookies()).set(PATIENT_COOKIE, matricula, COOKIE_OPTIONS)
+  redirect("/paciente")
+}
 
-  const store = await cookies()
-  store.set(ROLE_COOKIE, role, COOKIE_OPTIONS)
-  if (needsActor(role)) {
-    store.set(ACTOR_COOKIE, actor || defaultActor(role)!, COOKIE_OPTIONS)
-  } else {
-    store.delete(ACTOR_COOKIE)
-  }
-  redirect(`/${role}`)
+/** Guarda el médico elegido (matrícula profesional) y entra a su agenda. */
+export async function chooseDoctor(license: string) {
+  if (!license) throw new Error("Médico no válido")
+  ;(await cookies()).set(DOCTOR_COOKIE, license, COOKIE_OPTIONS)
+  redirect("/medico")
 }
 
 /** Restaura todos los datos de la demo (reset_demo). Devuelve el error de la BD tal cual. */

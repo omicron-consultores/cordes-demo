@@ -44,7 +44,7 @@ Ante la duda, elegir siempre lo más simple que funcione bien en la presentació
 
 ## Roles y rutas
 
-Sin autenticación. La pantalla `/` es un **selector de rol** (y de persona: paciente o médico); la elección se guarda en una cookie `demo_role` / `demo_actor` para que funcione con Server Components. En la cabecera siempre hay un selector para cambiar de rol y un menú con **"Reiniciar demo"** (llama `reset_demo()`, pide confirmación).
+Sin autenticación. La pantalla `/` es un **selector de rol** (y de persona: paciente o médico). **El rol lo define la ruta**; la persona se guarda en cookies separadas `demo_patient_id` (matrícula) y `demo_doctor_id` (`license_number`), con valores por defecto María Elena y el Dr. Villarroel (se guardan claves estables porque `reset_demo()` regenera los UUID). Leer con `getCurrentPatient()` / `getCurrentDoctor()` de `lib/session.ts`. Cada rol tiene su `layout.tsx` con la cabecera: selector para cambiar de rol (oculto en `/`) y menú con **"Reiniciar demo"** (llama `reset_demo()`, pide confirmación).
 
 | Rol | Rutas | Dispositivo |
 |---|---|---|

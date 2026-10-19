@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { RolePicker, type PersonOption } from "@/components/home/role-picker"
+import { SiteHeader } from "@/components/layout/site-header"
 import { age } from "@/lib/format"
 import { DEFAULT_DOCTOR, DEFAULT_PATIENT } from "@/lib/roles"
 import { supabase } from "@/lib/supabase"
@@ -7,20 +8,23 @@ import { cn } from "@/lib/utils"
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6 md:py-14">
-      <div className="mb-8 max-w-2xl md:mb-10">
-        <p className="mb-2 text-sm font-medium text-primary">Sistema integrado de salud</p>
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">¿Con qué rol desea ingresar?</h1>
-        <p className="mt-3 text-muted-foreground md:text-lg">
-          Cada acción se refleja en los demás módulos: cita, atención médica, receta digital,
-          farmacia, inventario e indicadores.
-        </p>
-      </div>
+    <>
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6 md:py-14">
+        <div className="mb-8 max-w-2xl md:mb-10">
+          <p className="mb-2 text-sm font-medium text-primary">Sistema integrado de salud</p>
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">¿Con qué rol desea ingresar?</h1>
+          <p className="mt-3 text-muted-foreground md:text-lg">
+            Cada acción se refleja en los demás módulos: cita, atención médica, receta digital,
+            farmacia, inventario e indicadores.
+          </p>
+        </div>
 
-      <Suspense fallback={<RolePickerSkeleton />}>
-        <RolePickerData />
-      </Suspense>
-    </main>
+        <Suspense fallback={<RolePickerSkeleton />}>
+          <RolePickerData />
+        </Suspense>
+      </main>
+    </>
   )
 }
 
