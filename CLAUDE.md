@@ -18,7 +18,8 @@ Ante la duda, elegir siempre lo más simple que funcione bien en la presentació
 
 ## Base de datos (fuente de verdad: `supabase/migrations/`)
 
-- `…01_schema.sql` tablas · `…02_logic.sql` funciones RPC y vistas · `…03_seed.sql` `reset_demo()`
+- `…01_schema.sql` tablas · `…02_logic.sql` funciones RPC y vistas · `…03_seed.sql` `reset_demo()` · `…04_horario_y_casos.sql` horario configurable (`demo_schedule()`, `day_slots()`, `available_slots()`), nueva `reset_demo()` y más casos sembrados
+- **Horario de consulta**: lun–vie 08:00–19:00, cupos de 20 min (33 por día). Se define **solo** en `demo_schedule()`; el front nunca fija horas ni cantidad de cupos: los horarios salen siempre de `available_slots`. Para cambiarlo: editar `demo_schedule()` y ejecutar `reset_demo()`.
 - `supabase/tests/flujo_demo.sql`: prueba de punta a punta (corre en transacción y hace rollback).
 - Documentación del modelo: `docs/modelo-datos.md`.
 
@@ -40,7 +41,7 @@ Ante la duda, elegir siempre lo más simple que funcione bien en la presentació
 - **Ficticios**: pacientes, médicos, citas, atenciones, recetas, lotes y vencimientos.
 - Nunca introducir personas reales ni datos personales reales.
 - Paciente protagonista: **María Elena Quispe Rojas** (matrícula `CBA-104523`, HTA + DM2, **alérgica a penicilinas**), médico por defecto **Dr. Jorge Andrés Villarroel Soria** (Medicina Interna, Cala Cala).
-- Casos sembrados para la presentación: receta pediátrica con Dicloxacilina suspensión (solo 2 frascos → dispensación parcial), una receta ya parcial, lote de Azitromicina vencido sin baja, 5 lotes por vencer en menos de 90 días, Insulina glargina y Amoxicilina suspensión bajo mínimo.
+- Casos sembrados para la presentación: receta pediátrica con Dicloxacilina suspensión (solo 2 frascos → dispensación parcial), una receta ya parcial, lote de Azitromicina vencido sin baja, 5 lotes por vencer en menos de 90 días, Insulina glargina y Amoxicilina suspensión bajo mínimo. Desde la 004: María Elena tiene control **hoy** con el Dr. Villarroel (primer cupo libre ≥ 30 min después del reset, o el siguiente día hábil), citas reprogramadas y una receta anulada.
 
 ## Roles y rutas
 

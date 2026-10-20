@@ -11,7 +11,7 @@ import { capitalize, formatDate, formatShortDate, formatTime } from "@/lib/forma
 import { supabase, type Tables, type Views } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { BookDialog } from "./book-dialog"
-import { NoShowButton } from "./no-show-button"
+import { NoShowButton } from "@/components/agenda/no-show-button"
 import { SelectField } from "./select-field"
 
 type Appointment = Views<"v_appointments">

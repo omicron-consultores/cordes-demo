@@ -66,7 +66,7 @@ Estado de stock por medicamento (`v_medication_stock.stock_status`): `agotado` (
 |---|---|
 | Una sola farmacia (Planta Central) | Stock por farmacia, posta y almacén, con transferencias entre ellas |
 | Sin login; acceso público con la anon key | Autenticación, roles (RBAC), auditoría por usuario, RLS por establecimiento |
-| Agenda fija de lunes a viernes, 08:00–14:00, cupos de 20 min | Agendas configurables por médico, turnos, feriados, sobrecupos |
+| Agenda de lunes a viernes, 08:00–19:00, cupos de 20 min (definida solo en `demo_schedule()`) | Agendas configurables por médico, turnos, feriados, sobrecupos |
 | Historia clínica mínima | HCE completa, firmas, adjuntos, interoperabilidad (HL7 FHIR) |
 | Lotes y vencimientos simulados | Ingreso desde compras/SICOES, recepción y control de calidad |
 | Datos ficticios | Datos sensibles de salud: cifrado, respaldo y cumplimiento normativo |
