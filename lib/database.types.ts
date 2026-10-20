@@ -1113,6 +1113,13 @@ export type Database = {
         }
         Returns: string
       }
+      day_slots: {
+        Args: { p_date: string }
+        Returns: {
+          slot: string
+        }[]
+      }
+      demo_schedule: { Args: never; Returns: Record<string, unknown> }
       dispense_prescription: {
         Args: {
           p_actor?: string
