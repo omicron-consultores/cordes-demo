@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { Suspense } from "react"
 import { CalendarDays, FileText, House, UserRound, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -14,8 +15,20 @@ const ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
 
 /** Navegación inferior del paciente: botones grandes, ícono + texto. */
 export function PatientNav() {
-  const pathname = usePathname()
+  // usePathname en rutas dinámicas ([id]) se resuelve al pedir la página: la barra se
+  // prerenderiza sin ítem activo y lo marca al llegar la ruta.
+  return (
+    <Suspense fallback={<NavBar pathname={null} />}>
+      <ActiveNav />
+    </Suspense>
+  )
+}
 
+function ActiveNav() {
+  return <NavBar pathname={usePathname()} />
+}
+
+function NavBar({ pathname }: { pathname: string | null }) {
   return (
     <nav
       aria-label="Secciones del paciente"
@@ -23,7 +36,7 @@ export function PatientNav() {
     >
       <ul className="grid grid-cols-4">
         {ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = href === "/paciente" ? pathname === href : pathname.startsWith(href)
+          const active = href === "/paciente" ? pathname === href : !!pathname?.startsWith(href)
           return (
             <li key={href}>
               <Link

@@ -7,7 +7,13 @@ import { supabase } from "./supabase"
 // se guarda en cookies independientes, con María Elena y el Dr. Villarroel por defecto.
 // Leer cookies es una API de request: usar dentro de <Suspense> (cacheComponents).
 
-export type CurrentPatient = { id: string; matricula: string; name: string }
+export type CurrentPatient = {
+  id: string
+  matricula: string
+  name: string
+  firstNames: string
+  allergies: string[]
+}
 export type CurrentDoctor = { id: string; license_number: string; name: string }
 
 /** Paciente elegido (o el protagonista si no hay cookie o ya no existe). Una consulta por request. */
@@ -33,10 +39,17 @@ async function findPatient(matricula: string | undefined): Promise<CurrentPatien
   if (!matricula) return null
   const { data } = await supabase
     .from("patients")
-    .select("id, matricula, first_names, last_names")
+    .select("id, matricula, first_names, last_names, allergies")
     .eq("matricula", matricula)
     .maybeSingle()
-  return data ? { id: data.id, matricula: data.matricula, name: `${data.first_names} ${data.last_names}` } : null
+  if (!data) return null
+  return {
+    id: data.id,
+    matricula: data.matricula,
+    name: `${data.first_names} ${data.last_names}`,
+    firstNames: data.first_names,
+    allergies: data.allergies,
+  }
 }
 
 async function findDoctor(license: string | undefined): Promise<CurrentDoctor | null> {

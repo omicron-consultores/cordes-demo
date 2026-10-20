@@ -74,3 +74,44 @@ export function boToday(): string {
 export function age(birthDate: string): number {
   return differenceInYears(toDate(boToday()), toDate(birthDate))
 }
+
+/** { weekday: "lun", day: "21", month: "oct" } para selectores de día compactos. */
+export function formatDayParts(value: DateInput): { weekday: string; day: string; month: string } {
+  const p = parts(value, { weekday: "short", day: "numeric", month: "short" })
+  const clean = (s = "") => s.replace(".", "")
+  return { weekday: clean(p.weekday), day: p.day ?? "", month: clean(p.month) }
+}
+
+/** Próximos `count` días hábiles (lun–vie) desde `from` inclusive, como 'YYYY-MM-DD'. */
+export function nextWorkingDays(from: string, count: number): string[] {
+  const out: string[] = []
+  const d = new Date(`${from}T12:00:00Z`)
+  while (out.length < count) {
+    const dow = d.getUTCDay()
+    if (dow !== 0 && dow !== 6) out.push(d.toISOString().slice(0, 10))
+    d.setUTCDate(d.getUTCDate() + 1)
+  }
+  return out
+}
+
+/** 123 → "RX-000123" */
+export function folioLabel(folio: number): string {
+  return `RX-${String(folio).padStart(6, "0")}`
+}
+
+/** "penicilinas" → "Penicilinas" */
+export function capitalize(s: string): string {
+  return s.charAt(0).toLocaleUpperCase(LOCALE) + s.slice(1)
+}
+
+/** Lugar de atención legible: "Medicina Interna · Cala Cala", "Policlínico Sacaba". */
+export function placeLabel(name: string, zone: string): string {
+  return name.includes(zone) ? name : `${name} · ${zone}`
+}
+
+/** ("Comprimido", 30) → "comprimidos" · ("Frasco", 1) → "frasco" */
+export function unitLabel(form: string, quantity: number): string {
+  const unit = form.toLocaleLowerCase(LOCALE)
+  if (quantity === 1) return unit
+  return /[aeiouáéíóú]$/.test(unit) ? `${unit}s` : `${unit}es`
+}

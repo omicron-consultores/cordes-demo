@@ -8,7 +8,7 @@ export default function Layout({ children }: LayoutProps<"/paciente">) {
     <>
       <SiteHeader role="paciente" />
       <div className="flex flex-1 flex-col sm:bg-muted/70">
-        <div className="mx-auto flex w-full max-w-[430px] flex-1 flex-col bg-background sm:border-x sm:shadow-sm">
+        <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[430px] flex-1 flex-col bg-background sm:border-x sm:shadow-sm">
           <div className="flex flex-1 flex-col">{children}</div>
           <PatientNav />
         </div>
