@@ -32,7 +32,7 @@ async function Encounter({ params }: { params: Promise<{ id: string }> }) {
   if (error) return <DataError />
   if (!encounter) return <DataError message="No se encontró la atención. Vuelva a la agenda e iníciela de nuevo." />
 
-  const [patient, history, cie10] = await Promise.all([
+  const [patient, history, cie10, medications] = await Promise.all([
     supabase.from("patients").select("*").eq("id", encounter.patient_id!).single(),
     supabase
       .from("v_encounters")
@@ -43,8 +43,12 @@ async function Encounter({ params }: { params: Promise<{ id: string }> }) {
       .order("started_at", { ascending: false })
       .limit(HISTORY_LIMIT),
     supabase.from("cie10").select("code, label").order("code"),
+    supabase
+      .from("v_medication_stock")
+      .select("code, name, form, concentration, available, stock_status, allergen_group")
+      .order("name"),
   ])
-  if (patient.error || history.error || cie10.error) return <DataError />
+  if (patient.error || history.error || cie10.error || medications.error) return <DataError />
 
   const rxIds = history.data.flatMap((e) => (e.prescription_id ? [e.prescription_id] : []))
   const items = rxIds.length
@@ -98,6 +102,16 @@ async function Encounter({ params }: { params: Promise<{ id: string }> }) {
             initialComplaint={encounter.chief_complaint ?? ""}
             lastHeight={history.data.find((e) => e.height_cm !== null)?.height_cm ?? null}
             cie10={cie10.data}
+            medications={medications.data.map((m) => ({
+              code: m.code!,
+              name: m.name!,
+              form: m.form!,
+              concentration: m.concentration,
+              available: m.available ?? 0,
+              stock_status: m.stock_status ?? "ok",
+              allergen_group: m.allergen_group,
+            }))}
+            patient={{ name: p.first_names, sex: p.sex, allergies: p.allergies }}
           />
         )}
       </div>

@@ -3,18 +3,12 @@
 import { useId, useState } from "react"
 import { Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { normalizeSearch as normalize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 export type Cie10Option = { code: string; label: string }
 
 const MAX_RESULTS = 8
-
-/** "Hipertensión" → "hipertension": búsqueda sin tildes ni mayúsculas. */
-const normalize = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
 
 /** Buscador de diagnóstico CIE-10 (código o descripción) sobre la tabla `cie10`. */
 export function Cie10Picker({

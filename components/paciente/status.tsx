@@ -40,6 +40,14 @@ export const PRESCRIPTION_STATUS: Record<
   anulada: { label: "Anulada", tone: "muted", hint: "Esta receta ya no es válida." },
 }
 
+// Stock en Farmacia (v_medication_stock.stock_status). Texto siempre junto al color.
+export const STOCK_STATUS: Record<string, { label: string; tone: Tone }> = {
+  ok: { label: "Disponible", tone: "ok" },
+  bajo: { label: "Stock bajo", tone: "warning" },
+  critico: { label: "Stock crítico", tone: "critical" },
+  agotado: { label: "Agotado", tone: "critical" },
+}
+
 export function StatusPill({ label, tone, className }: { label: string; tone: Tone; className?: string }) {
   return (
     <span

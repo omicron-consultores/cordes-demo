@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react"
 import { toast } from "sonner"
 import { completeEncounter } from "@/app/(roles)/medico/actions"
 import {
@@ -20,12 +20,16 @@ import {
   EMPTY_ENCOUNTER,
   encounterSchema,
   fieldErrors,
+  prescriptionErrors,
+  prescriptionSchema,
   type EncounterErrors,
   type EncounterField,
   type EncounterFormValues,
+  type PrescriptionLineErrors,
 } from "@/lib/encounter-schema"
 import { cn } from "@/lib/utils"
 import { Cie10Picker, type Cie10Option } from "./cie10-picker"
+import { medicationLabel, PrescriptionEditor, type MedicationOption, type PrescriptionLine } from "./prescription-editor"
 
 const inputClass =
   "w-full rounded-xl border border-input bg-background px-3 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-critical aria-invalid:ring-3 aria-invalid:ring-critical/15"
@@ -45,21 +49,29 @@ const FIELD_ORDER: EncounterField[] = [
   "plan",
 ]
 
-/** Consulta actual: motivo, signos vitales, hallazgos, diagnóstico CIE-10 y plan → complete_encounter. */
+const RX_FIELD_ORDER = ["dose", "frequency", "duration_days", "quantity", "instructions"] as const
+
+/** Consulta actual: motivo, signos vitales, hallazgos, diagnóstico CIE-10, plan y receta → complete_encounter. */
 export function EncounterForm({
   encounterId,
   initialComplaint,
   lastHeight,
   cie10,
+  medications,
+  patient,
 }: {
   encounterId: string
   initialComplaint: string
   lastHeight: number | null
   cie10: Cie10Option[]
+  medications: MedicationOption[]
+  patient: { name: string; sex: string; allergies: string[] }
 }) {
   const router = useRouter()
   const [values, setValues] = useState<EncounterFormValues>({ ...EMPTY_ENCOUNTER, chief_complaint: initialComplaint })
   const [errors, setErrors] = useState<EncounterErrors>({})
+  const [lines, setLines] = useState<PrescriptionLine[]>([])
+  const [rxErrors, setRxErrors] = useState<Record<number, PrescriptionLineErrors>>({})
   const [confirming, setConfirming] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -73,29 +85,53 @@ export function EncounterForm({
     }
   }
 
+  function changeLines(next: PrescriptionLine[]) {
+    // Al quitar una línea los índices cambian: los errores se recalculan al volver a revisar.
+    if (next.length < lines.length) setRxErrors({})
+    else if (Object.keys(rxErrors).length) {
+      const result = prescriptionSchema.safeParse(next)
+      setRxErrors(result.success ? {} : prescriptionErrors(result.error))
+    }
+    setLines(next)
+  }
+
   function review(e: React.FormEvent) {
     e.preventDefault()
     const result = encounterSchema.safeParse(values)
-    if (!result.success) {
-      const found = fieldErrors(result.error)
-      setErrors(found)
-      document.getElementById(FIELD_ORDER.find((f) => found[f])!)?.focus()
-      toast.error("Revise los campos marcados en rojo.")
+    const rx = prescriptionSchema.safeParse(lines)
+    const found = result.success ? {} : fieldErrors(result.error)
+    const foundRx = rx.success ? {} : prescriptionErrors(rx.error)
+    setErrors(found)
+    setRxErrors(foundRx)
+    if (!result.success || !rx.success) {
+      const firstLine = Object.keys(foundRx).map(Number).sort((a, b) => a - b)[0]
+      const target =
+        FIELD_ORDER.find((f) => found[f]) ??
+        (firstLine !== undefined && `rx-${firstLine}-${RX_FIELD_ORDER.find((f) => foundRx[firstLine][f])}`)
+      if (target) document.getElementById(target)?.focus()
+      toast.error(rx.success || firstLine !== undefined ? "Revise los campos marcados en rojo." : rx.error.issues[0].message)
       return
     }
-    setErrors({})
     setConfirming(true)
   }
 
   function finish() {
     startTransition(async () => {
-      const result = await completeEncounter(encounterId, values)
+      const result = await completeEncounter(encounterId, values, lines)
       if (!result.ok) {
         toast.error(result.error)
         return
       }
       setConfirming(false)
-      toast.success("Atención cerrada. La cita quedó como atendida.")
+      if (result.folio) {
+        toast.success(`Receta ${result.folio} enviada a Farmacia`, {
+          description: "La atención quedó cerrada y la cita como atendida.",
+          duration: 10_000,
+          action: { label: "Ver en Farmacia", onClick: () => router.push("/farmacia") },
+        })
+      } else {
+        toast.success("Atención cerrada sin receta. La cita quedó como atendida.")
+      }
       router.push("/medico")
     })
   }
@@ -194,6 +230,14 @@ export function EncounterForm({
         <Field label="Plan" hint="Indicaciones, estudios, control" name="plan" error={errors.plan}>
           <textarea {...field("plan")} rows={4} maxLength={2000} className={cn(inputClass, "py-2.5")} />
         </Field>
+
+        <PrescriptionEditor
+          medications={medications}
+          lines={lines}
+          errors={rxErrors}
+          patient={patient}
+          onChange={changeLines}
+        />
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t bg-muted/30 px-5 py-4 sm:px-6">
@@ -204,7 +248,7 @@ export function EncounterForm({
       </div>
 
       <AlertDialog open={confirming} onOpenChange={(next) => !pending && setConfirming(next)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="data-[size=default]:sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>¿Finalizar la atención?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -213,10 +257,33 @@ export function EncounterForm({
                   {diagnosis.code} · {diagnosis.label}
                 </strong>
               )}
-              La consulta quedará registrada en la historia clínica y la cita como atendida. Después ya no se
-              podrá modificar.
+              La consulta quedará registrada en la historia clínica y la cita como atendida.{" "}
+              {lines.length > 0
+                ? "La receta se enviará a Farmacia."
+                : "No se emitirá receta."}{" "}
+              Después ya no se podrá modificar.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {lines.length > 0 && (
+            <ul className="space-y-1.5 rounded-xl bg-muted/60 p-3 text-sm">
+              {lines.map((l) => {
+                const med = medications.find((m) => m.code === l.medication_code)!
+                return (
+                  <li key={l.medication_code} className="flex items-start gap-2">
+                    {l.allergy_override && <ShieldAlert className="mt-0.5 size-4 shrink-0 text-critical" />}
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium">{medicationLabel(med)}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {l.dose} {l.frequency}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums">× {l.quantity}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Seguir editando</AlertDialogCancel>
             <AlertDialogAction onClick={finish} disabled={pending}>

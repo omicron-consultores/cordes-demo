@@ -73,3 +73,59 @@ export function fieldErrors(error: z.ZodError): EncounterErrors {
   }
   return out
 }
+
+// ---------- Receta (complete_encounter → p_items) ----------
+
+/** Línea de receta: medicamento + dosis, frecuencia, días y cantidad a entregar. */
+export const prescriptionItemSchema = z.object({
+  medication_code: z.string().min(1),
+  dose: text(60).min(1, "Escriba la dosis"),
+  frequency: text(60).min(2, "Escriba la frecuencia"),
+  duration_days: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? Number(v.trim()) : undefined),
+    z
+      .number({ error: "Días: escriba solo números" })
+      .int("Días: sin decimales")
+      .min(1, "Días: entre 1 y 365")
+      .max(365, "Días: entre 1 y 365")
+      .optional(),
+  ),
+  quantity: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() !== "" ? Number(v.trim()) : undefined),
+    z
+      .number({ error: "Escriba la cantidad a entregar" })
+      .int("Cantidad: sin decimales")
+      .min(1, "Cantidad: al menos 1")
+      .max(999, "Cantidad: máximo 999"),
+  ),
+  instructions: optionalText(200),
+  /** El médico confirmó recetarlo pese a la alergia del paciente (queda en las notas de la receta). */
+  allergy_override: z.boolean().default(false),
+})
+
+export const prescriptionSchema = z
+  .array(prescriptionItemSchema)
+  .max(10, "Máximo 10 medicamentos por receta")
+  .refine((items) => new Set(items.map((i) => i.medication_code)).size === items.length, {
+    message: "Hay un medicamento repetido en la receta",
+  })
+
+export type PrescriptionItemField = "dose" | "frequency" | "duration_days" | "quantity" | "instructions"
+/** Línea tal como se escribe en el formulario (texto). */
+export type PrescriptionLineValues = Record<PrescriptionItemField, string> & {
+  medication_code: string
+  allergy_override: boolean
+}
+export type PrescriptionLineErrors = Partial<Record<PrescriptionItemField, string>>
+
+/** Errores por línea (índice) y campo; el primero de cada campo. */
+export function prescriptionErrors(error: z.ZodError): Record<number, PrescriptionLineErrors> {
+  const out: Record<number, PrescriptionLineErrors> = {}
+  for (const issue of error.issues) {
+    const [index, field] = issue.path as [number, PrescriptionItemField]
+    if (typeof index !== "number" || !field) continue
+    out[index] ??= {}
+    out[index][field] ??= issue.message
+  }
+  return out
+}
