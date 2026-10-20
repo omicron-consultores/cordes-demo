@@ -56,9 +56,35 @@ export async function cancelAppointment(appointmentId: string): Promise<ActionRe
   return done(error)
 }
 
+// Excepción permitida por el modelo: los datos de contacto se editan con update directo.
+const optional = <T extends z.ZodType<string, string>>(schema: T) =>
+  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? null : v), schema.nullable())
+
+const contactSchema = z.object({
+  phone: optional(
+    z
+      .string()
+      .transform((v) => v.replace(/[\s-]/g, ""))
+      .pipe(z.string().regex(/^\d{7,8}$/, "El teléfono debe tener 7 u 8 números")),
+  ),
+  email: optional(z.string().trim().pipe(z.email("Revise el correo electrónico"))),
+  address: optional(z.string().trim().max(200, "La dirección es demasiado larga")),
+})
+
+export async function updateContact(input: z.input<typeof contactSchema>): Promise<ActionResult> {
+  const parsed = contactSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message }
+
+  const patient = await getCurrentPatient()
+  if (!patient) return { ok: false, error: "No se encontró al paciente" }
+
+  const { error } = await supabase.from("patients").update(parsed.data).eq("id", patient.id)
+  return done(error)
+}
+
 function done(error: { message: string } | null): ActionResult {
   if (error) return { ok: false, error: error.message }
-  // La agenda del médico y de Admisión también muestran estas citas.
+  // La agenda del médico y de Admisión también muestran estas citas (y los datos del paciente).
   revalidatePath("/", "layout")
   return { ok: true }
 }

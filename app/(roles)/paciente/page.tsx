@@ -4,9 +4,9 @@ import { CalendarClock, CalendarPlus, ChevronRight, Pill, TriangleAlert } from "
 import { DataError } from "@/components/layout/data-error"
 import { AppointmentCard } from "@/components/paciente/appointment-card"
 import { LiveRefresh } from "@/components/paciente/live-refresh"
-import { PRESCRIPTION_STATUS, StatusPill } from "@/components/paciente/status"
+import { PRESCRIPTION_ITEM_COLUMNS, PrescriptionItems, PrescriptionStatusBox } from "@/components/paciente/prescription"
 import { buttonVariants } from "@/components/ui/button"
-import { boToday, capitalize, folioLabel, formatDate, formatNumber, unitLabel } from "@/lib/format"
+import { boToday, capitalize, folioLabel, formatDate } from "@/lib/format"
 import { getCurrentPatient, type CurrentPatient } from "@/lib/session"
 import { supabase } from "@/lib/supabase"
 
@@ -110,10 +110,9 @@ async function LatestPrescription({ patient }: { patient: CurrentPatient }) {
   if (enc?.prescription_id) {
     const { data: items } = await supabase
       .from("v_prescription_items")
-      .select("id, medication_name, concentration, form, dose, frequency, quantity_prescribed, quantity_dispensed")
+      .select(PRESCRIPTION_ITEM_COLUMNS)
       .eq("prescription_id", enc.prescription_id)
       .order("line_no")
-    const status = PRESCRIPTION_STATUS[enc.prescription_status!]
 
     body = (
       <article className="rounded-2xl bg-card p-4 shadow-xs ring-1 ring-foreground/5">
@@ -121,39 +120,10 @@ async function LatestPrescription({ patient }: { patient: CurrentPatient }) {
         <p className="text-sm text-muted-foreground">
           {capitalize(formatDate(enc.started_at!))} · {enc.doctor_name}
         </p>
-        <div className="mt-3 rounded-xl bg-muted/60 p-3">
-          <StatusPill {...status} className="h-8 text-base" />
-          <p className="mt-1.5 text-sm text-muted-foreground">{status.hint}</p>
+        <PrescriptionStatusBox status={enc.prescription_status!} className="mt-3" />
+        <div className="mt-3">
+          <PrescriptionItems items={items ?? []} partial={enc.prescription_status === "parcial"} />
         </div>
-        <ul className="mt-3 divide-y">
-          {(items ?? []).map((it) => {
-            const prescribed = it.quantity_prescribed ?? 0
-            const dispensed = it.quantity_dispensed ?? 0
-            return (
-              <li key={it.id} className="flex items-start gap-3 py-3 last:pb-0">
-                <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-secondary text-primary">
-                  <Pill className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">
-                    {it.medication_name} {it.concentration}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {it.dose}, {it.frequency}
-                  </p>
-                </div>
-                <p className="shrink-0 text-right text-sm tabular-nums">
-                  <span className="font-semibold">{formatNumber(prescribed)}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {enc.prescription_status === "parcial" && dispensed < prescribed
-                      ? `recibió ${formatNumber(dispensed)}`
-                      : unitLabel(it.form ?? "", prescribed)}
-                  </span>
-                </p>
-              </li>
-            )
-          })}
-        </ul>
       </article>
     )
   }
