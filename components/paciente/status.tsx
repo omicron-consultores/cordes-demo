@@ -40,12 +40,33 @@ export const PRESCRIPTION_STATUS: Record<
   anulada: { label: "Anulada", tone: "muted", hint: "Esta receta ya no es válida." },
 }
 
+// Estado de la receta visto desde Farmacia (bandeja): vocabulario interno, no el del paciente.
+export const PHARMACY_STATUS: Partial<Record<Enums["prescription_status"], { label: string; tone: Tone }>> = {
+  emitida: { label: "Emitida", tone: "primary" },
+  parcial: { label: "Parcial", tone: "warning" },
+}
+
 // Stock en Farmacia (v_medication_stock.stock_status). Texto siempre junto al color.
 export const STOCK_STATUS: Record<string, { label: string; tone: Tone }> = {
   ok: { label: "Disponible", tone: "ok" },
   bajo: { label: "Stock bajo", tone: "warning" },
   critico: { label: "Stock crítico", tone: "critical" },
   agotado: { label: "Agotado", tone: "critical" },
+}
+
+// Semáforo de vencimiento de lotes (v_lots.expiry_status).
+export const LOT_STATUS: Record<string, { label: string; tone: Tone }> = {
+  vigente: { label: "Vigente", tone: "ok" },
+  por_vencer: { label: "Por vencer", tone: "warning" },
+  vencido: { label: "Vencido", tone: "critical" },
+}
+
+// Tipos de movimiento del kardex (inventory_movements.type).
+export const MOVEMENT_TYPE: Record<Enums["movement_type"], { label: string; tone: Tone }> = {
+  ingreso: { label: "Ingreso", tone: "ok" },
+  dispensacion: { label: "Dispensación", tone: "primary" },
+  ajuste: { label: "Ajuste", tone: "muted" },
+  baja_vencimiento: { label: "Baja por vencimiento", tone: "critical" },
 }
 
 export function StatusPill({ label, tone, className }: { label: string; tone: Tone; className?: string }) {

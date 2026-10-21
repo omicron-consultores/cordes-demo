@@ -1,4 +1,4 @@
-import { differenceInYears } from "date-fns"
+import { differenceInCalendarDays, differenceInYears } from "date-fns"
 
 // Formatos de la interfaz (es-BO). Toda fecha/hora se muestra en la zona de negocio.
 export const TIME_ZONE = "America/La_Paz"
@@ -81,6 +81,11 @@ export function boToday(): string {
 /** Edad en años cumplidos a partir de 'YYYY-MM-DD'. */
 export function age(birthDate: string): number {
   return differenceInYears(toDate(boToday()), toDate(birthDate))
+}
+
+/** Días de calendario de `from` a `to` ('YYYY-MM-DD'): negativo si `to` ya pasó. */
+export function daysBetween(from: string, to: string): number {
+  return differenceInCalendarDays(toDate(to), toDate(from))
 }
 
 /** { weekday: "lun", day: "21", month: "oct" } para selectores de día compactos. */
