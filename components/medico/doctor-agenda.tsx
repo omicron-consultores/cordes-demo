@@ -1,7 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { useEffect, useState, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { CalendarX2, Loader2, ShieldAlert, Stethoscope } from "lucide-react"
 import { toast } from "sonner"
 import { startEncounter } from "@/app/(roles)/medico/actions"
@@ -9,7 +8,8 @@ import { NoShowButton } from "@/components/agenda/no-show-button"
 import { APPOINTMENT_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button } from "@/components/ui/button"
 import { capitalize, formatDate, formatShortDate, formatTime } from "@/lib/format"
-import { supabase, type Tables, type Views } from "@/lib/supabase"
+import type { Tables, Views } from "@/lib/supabase"
+import { useRealtimeRefresh } from "@/lib/use-realtime-refresh"
 import { cn } from "@/lib/utils"
 
 type Appointment = Views<"v_appointments">
@@ -192,48 +192,28 @@ function LiveDot({ live }: { live: boolean }) {
  * Las citas nuevas de hoy (p. ej. agendadas desde la app) se resaltan unos segundos y avisan con un toast.
  */
 function useLiveDoctorAgenda(doctorId: string, today: string) {
-  const router = useRouter()
-  const [live, setLive] = useState(false)
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set())
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const refresh = () => {
-      clearTimeout(timer)
-      timer = setTimeout(() => router.refresh(), 200)
-    }
+  const live = useRealtimeRefresh(["appointments"], {
+    filter: `doctor_id=eq.${doctorId}`,
+    onChange: (change) => {
+      if (change.eventType !== "INSERT") return
+      const row = change.new as Tables<"appointments">
+      if (formatShortDate(row.scheduled_at) !== formatShortDate(today)) return
 
-    const channel = supabase
-      .channel(`medico-${doctorId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "appointments", filter: `doctor_id=eq.${doctorId}` },
-        (payload) => {
-          refresh()
-          if (payload.eventType !== "INSERT") return
-          const row = payload.new as Tables<"appointments">
-          if (formatShortDate(row.scheduled_at) !== formatShortDate(today)) return
-
-          setFresh((s) => new Set(s).add(row.id))
-          setTimeout(
-            () =>
-              setFresh((s) => {
-                const next = new Set(s)
-                next.delete(row.id)
-                return next
-              }),
-            FRESH_MS,
-          )
-          toast.info("Nueva cita para hoy", { description: formatTime(row.scheduled_at) })
-        },
+      setFresh((s) => new Set(s).add(row.id))
+      setTimeout(
+        () =>
+          setFresh((s) => {
+            const next = new Set(s)
+            next.delete(row.id)
+            return next
+          }),
+        FRESH_MS,
       )
-      .subscribe((state) => setLive(state === "SUBSCRIBED"))
-
-    return () => {
-      clearTimeout(timer)
-      supabase.removeChannel(channel)
-    }
-  }, [doctorId, router, today])
+      toast.info("Nueva cita para hoy", { description: formatTime(row.scheduled_at) })
+    },
+  })
 
   return { live, fresh }
 }

@@ -1,14 +1,14 @@
 "use client"
 
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { FilterX, PackagePlus, Search } from "lucide-react"
 import { LOT_STATUS, MOVEMENT_TYPE, STOCK_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { Database } from "@/lib/database.types"
 import { daysBetween, formatBs, formatDateTime, formatNumber, formatShortDate, normalizeSearch } from "@/lib/format"
-import { supabase, type Views } from "@/lib/supabase"
+import type { Views } from "@/lib/supabase"
+import { useRealtimeRefresh } from "@/lib/use-realtime-refresh"
 import { cn } from "@/lib/utils"
 import { ReceiveDialog } from "./receive-dialog"
 import { WriteOffButton } from "./write-off-button"
@@ -52,7 +52,8 @@ export function InventoryBoard({
 }) {
   const [tab, setTab] = useState<Tab>(isInventoryTab(initialTab) ? initialTab : "stock")
   const [receiving, setReceiving] = useState(false)
-  const live = useLiveStock()
+  // Toda dispensación, ingreso o baja cambia un lote (el kardex no está en Realtime, pero cambia a la vez).
+  const live = useRealtimeRefresh(["stock_lots"])
 
   function selectTab(next: Tab) {
     setTab(next)
@@ -458,25 +459,3 @@ function daysLabel(days: number): string {
   return days > 0 ? `en ${n} ${unit}` : `vencido hace ${n} ${unit}`
 }
 
-/** Realtime sobre `stock_lots`: toda dispensación, ingreso o baja cambia un lote y refresca el inventario. */
-function useLiveStock() {
-  const router = useRouter()
-  const [live, setLive] = useState(false)
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const channel = supabase
-      .channel("farmacia-inventario")
-      .on("postgres_changes", { event: "*", schema: "public", table: "stock_lots" }, () => {
-        clearTimeout(timer)
-        timer = setTimeout(() => router.refresh(), 300)
-      })
-      .subscribe((state) => setLive(state === "SUBSCRIBED"))
-    return () => {
-      clearTimeout(timer)
-      supabase.removeChannel(channel)
-    }
-  }, [router])
-
-  return live
-}

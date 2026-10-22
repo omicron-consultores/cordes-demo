@@ -1,14 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CircleCheck, ClipboardCheck, Pill, ShieldAlert, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { PHARMACY_STATUS, StatusPill } from "@/components/paciente/status"
 import { buttonVariants } from "@/components/ui/button"
 import { capitalize, folioLabel, formatDate, formatShortDate, formatTime } from "@/lib/format"
 import { supabase, type Tables, type Views } from "@/lib/supabase"
+import { useRealtimeRefresh } from "@/lib/use-realtime-refresh"
 import { cn } from "@/lib/utils"
 
 type QueueRow = Views<"v_prescription_queue">
@@ -188,58 +188,40 @@ function LiveDot({ live }: { live: boolean }) {
  * Cualquier cambio refresca la bandeja; las recetas nuevas se resaltan unos segundos y avisan con un toast.
  */
 function useLiveQueue() {
-  const router = useRouter()
-  const [live, setLive] = useState(false)
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set())
+  const burst = useRef<{ rows: Tables<"prescriptions">[]; timer?: ReturnType<typeof setTimeout> }>({ rows: [] })
 
-  useEffect(() => {
-    let refreshTimer: ReturnType<typeof setTimeout> | undefined
-    let burstTimer: ReturnType<typeof setTimeout> | undefined
-    let burst: Tables<"prescriptions">[] = []
+  useEffect(() => () => clearTimeout(burst.current.timer), [])
 
-    const refresh = () => {
-      clearTimeout(refreshTimer)
-      refreshTimer = setTimeout(() => router.refresh(), 200)
+  function flushBurst() {
+    const rows = burst.current.rows
+    burst.current.rows = []
+    if (rows.length > BURST_MAX) return // reinicio de la demo: solo refrescar
+    for (const row of rows) {
+      if (Date.now() - new Date(row.issued_at).getTime() > RECENT_MS) continue
+      setFresh((s) => new Set(s).add(row.id))
+      setTimeout(
+        () =>
+          setFresh((s) => {
+            const next = new Set(s)
+            next.delete(row.id)
+            return next
+          }),
+        FRESH_MS,
+      )
+      notifyNew(row)
     }
+  }
 
-    const flushBurst = () => {
-      const rows = burst
-      burst = []
-      if (rows.length > BURST_MAX) return // reinicio de la demo: solo refrescar
-      for (const row of rows) {
-        if (Date.now() - new Date(row.issued_at).getTime() > RECENT_MS) continue
-        setFresh((s) => new Set(s).add(row.id))
-        setTimeout(
-          () =>
-            setFresh((s) => {
-              const next = new Set(s)
-              next.delete(row.id)
-              return next
-            }),
-          FRESH_MS,
-        )
-        notifyNew(row)
-      }
-    }
-
-    const channel = supabase
-      .channel("farmacia-bandeja")
-      .on("postgres_changes", { event: "*", schema: "public", table: "prescriptions" }, (payload) => {
-        refresh()
-        if (payload.eventType !== "INSERT") return
-        burst.push(payload.new as Tables<"prescriptions">)
-        clearTimeout(burstTimer)
-        burstTimer = setTimeout(flushBurst, BURST_MS)
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "stock_lots" }, refresh)
-      .subscribe((state) => setLive(state === "SUBSCRIBED"))
-
-    return () => {
-      clearTimeout(refreshTimer)
-      clearTimeout(burstTimer)
-      supabase.removeChannel(channel)
-    }
-  }, [router])
+  // stock_lots además de prescriptions: un ingreso o una dispensación cambia el aviso "Falta stock".
+  const live = useRealtimeRefresh(["prescriptions", "stock_lots"], {
+    onChange: (change) => {
+      if (change.table !== "prescriptions" || change.eventType !== "INSERT") return
+      burst.current.rows.push(change.new as Tables<"prescriptions">)
+      clearTimeout(burst.current.timer)
+      burst.current.timer = setTimeout(flushBurst, BURST_MS)
+    },
+  })
 
   return { live, fresh }
 }

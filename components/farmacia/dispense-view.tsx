@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { CircleCheck, HeartPulse, Loader2, Pill, ShieldAlert, StickyNote, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
@@ -40,6 +41,7 @@ export function DispenseView({
   const [quantities, setQuantities] = useState<Record<string, string>>(() =>
     Object.fromEntries(items.map((i) => [i.id!, String(i.quantity_pending ?? 0)])),
   )
+  const router = useRouter()
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -61,8 +63,13 @@ export function DispenseView({
       }
       const result = buildOutcome(res.result, snapshot)
       setOutcome(result)
-      if (result.status === "dispensada") toast.success(`Receta ${result.folio} entregada completa`)
-      else toast.warning(`Receta ${result.folio} queda en bandeja`)
+      // Atajo al siguiente módulo: el descuento ya se ve en el inventario.
+      const toInventory = {
+        duration: 10_000,
+        action: { label: "Ver inventario", onClick: () => router.push("/farmacia/inventario") },
+      }
+      if (result.status === "dispensada") toast.success(`Receta ${result.folio} entregada completa`, toInventory)
+      else toast.warning(`Receta ${result.folio} queda en bandeja`, toInventory)
     })
   }
 
