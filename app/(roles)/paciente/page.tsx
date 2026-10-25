@@ -76,15 +76,15 @@ async function NextAppointment({ patient }: { patient: CurrentPatient }) {
       {next ? (
         <AppointmentCard appt={next} />
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed p-6 text-center">
-          <CalendarClock className="size-7 text-muted-foreground" />
-          <p className="text-muted-foreground">No tiene citas programadas.</p>
-          <Link href="/paciente/citas/nueva" className={buttonVariants({ size: "xl", className: "w-full" })}>
-            <CalendarPlus />
-            Agendar una cita
-          </Link>
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed p-6 text-center text-muted-foreground">
+          <CalendarClock className="size-7" />
+          No tiene citas programadas.
         </div>
       )}
+      <Link href="/paciente/citas/nueva" className={buttonVariants({ size: "xl", className: "h-14 w-full text-base" })}>
+        <CalendarPlus />
+        Agendar nueva cita
+      </Link>
     </section>
   )
 }

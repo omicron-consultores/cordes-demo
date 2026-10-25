@@ -66,7 +66,7 @@ async function History() {
           Todavía no tiene consultas registradas.
         </div>
       ) : (
-        <ol className="space-y-4">
+        <ol className="space-y-3">
           {encounters.map((enc) => (
             <li key={enc.id}>
               <EncounterCard
