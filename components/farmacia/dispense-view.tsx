@@ -3,27 +3,28 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { CircleCheck, HeartPulse, Loader2, Pill, ShieldAlert, StickyNote, TriangleAlert } from "lucide-react"
+import { Ban, CircleCheck, HeartPulse, Loader2, Pill, ShieldAlert, StickyNote, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { dispensePrescription, type DispenseResult } from "@/app/(roles)/farmacia/actions"
 import { PRESCRIPTION_STATUS, PHARMACY_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { age, capitalize, folioLabel, formatDateTime, unitLabel } from "@/lib/format"
+import { age, capitalize, folioLabel, formatDateTime } from "@/lib/format"
 import type { Tables, Views } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 type Item = Views<"v_prescription_items">
-type Prescription = Pick<Tables<"prescriptions">, "folio" | "status" | "notes" | "issued_at">
+type Prescription = Pick<Tables<"prescriptions">, "folio" | "status" | "notes" | "issued_at" | "dispensed_at">
 type Doctor = Pick<Views<"v_prescription_queue">, "doctor_name" | "specialty_name" | "establishment_name"> | null
 
-/** Resultado de una línea tal como quedó al dispensar (se congela: la página se refresca después). */
-type OutcomeLine = { item: Item; given: number; remaining: number; noStock: boolean }
-type Outcome = { folio: string; status: DispenseResult["status"]; lines: OutcomeLine[] }
+/** Qué pasó con una línea en la última dispensación: "stock" = faltó stock, "partial" = se entregó menos a propósito. */
+type LineResult = { given: number; kind: "complete" | "stock" | "partial"; message: string | null }
+type Result = { folio: string; status: DispenseResult["status"]; given: number; lines: Record<string, LineResult> }
 
 /**
- * Dispensación de una receta: cantidades por línea (por defecto lo pendiente) → dispense_prescription.
- * Tras dispensar muestra lo entregado y el faltante por línea; la receta parcial sigue en la bandeja.
+ * Dispensación de una receta. El modo depende del estado ACTUAL (emitida/parcial → editable;
+ * dispensada/anulada → solo lectura). El resultado de la última acción vive en el cliente; los datos
+ * (ya entregado, pendiente, stock) siempre vienen del servidor tras `router.refresh()`.
  */
 export function DispenseView({
   prescriptionId,
@@ -38,12 +39,17 @@ export function DispenseView({
   patient: Tables<"patients">
   items: Item[]
 }) {
-  const [quantities, setQuantities] = useState<Record<string, string>>(() =>
-    Object.fromEntries(items.map((i) => [i.id!, String(i.quantity_pending ?? 0)])),
-  )
   const router = useRouter()
-  const [outcome, setOutcome] = useState<Outcome | null>(null)
+  const [quantities, setQuantities] = useState(() => pendingQuantities(items))
+  const [prevItems, setPrevItems] = useState(items)
+  const [result, setResult] = useState<Result | null>(null)
   const [pending, startTransition] = useTransition()
+
+  // Llegaron datos nuevos (tras dispensar): la cantidad a entregar vuelve a ser lo pendiente.
+  if (items !== prevItems) {
+    setPrevItems(items)
+    setQuantities(pendingQuantities(items))
+  }
 
   const open = prescription.status === "emitida" || prescription.status === "parcial"
   const toDispense = items.filter((i) => (i.quantity_pending ?? 0) > 0)
@@ -51,7 +57,7 @@ export function DispenseView({
   const nothing = toDispense.every((i) => Number(quantities[i.id!]) === 0)
 
   function dispense() {
-    const snapshot = items // la página se re-renderiza con los datos nuevos al terminar
+    const before = items // pendientes antes de dispensar, para explicar el resultado
     startTransition(async () => {
       const res = await dispensePrescription(
         prescriptionId,
@@ -61,19 +67,17 @@ export function DispenseView({
         toast.error(res.error)
         return
       }
-      const result = buildOutcome(res.result, snapshot)
-      setOutcome(result)
-      // Atajo al siguiente módulo: el descuento ya se ve en el inventario.
+      const outcome = buildResult(res.result, before)
+      setResult(outcome)
+      router.refresh()
       const toInventory = {
         duration: 10_000,
         action: { label: "Ver inventario", onClick: () => router.push("/farmacia/inventario") },
       }
-      if (result.status === "dispensada") toast.success(`Receta ${result.folio} entregada completa`, toInventory)
-      else toast.warning(`Receta ${result.folio} queda en bandeja`, toInventory)
+      if (outcome.status === "dispensada") toast.success(`Receta ${outcome.folio} dispensada`, toInventory)
+      else toast.warning(`Receta ${outcome.folio} queda en bandeja`, toInventory)
     })
   }
-
-  const status = outcome?.status ?? prescription.status
 
   return (
     <div className="space-y-6">
@@ -81,7 +85,7 @@ export function DispenseView({
         <div>
           <h1 className="flex items-center gap-3 text-2xl font-semibold tracking-tight">
             Receta {folioLabel(prescription.folio)}
-            <StatusPill {...(PHARMACY_STATUS[status] ?? PRESCRIPTION_STATUS[status])} />
+            <StatusPill {...(PHARMACY_STATUS[prescription.status] ?? PRESCRIPTION_STATUS[prescription.status])} />
           </h1>
           <p className="text-muted-foreground">
             Emitida el {formatDateTime(prescription.issued_at)}
@@ -101,16 +105,7 @@ export function DispenseView({
         </p>
       )}
 
-      {outcome ? (
-        <OutcomeBanner outcome={outcome} />
-      ) : (
-        !open && (
-          <p className="rounded-xl bg-muted/60 p-4 text-muted-foreground">
-            Esta receta ya está {PRESCRIPTION_STATUS[prescription.status].label.toLowerCase()}: no hay nada pendiente
-            de entregar.
-          </p>
-        )
-      )}
+      {result ? <ResultBanner result={result} /> : !open && <ClosedSummary prescription={prescription} />}
 
       <div className="overflow-x-auto rounded-xl bg-card ring-1 ring-foreground/10">
         <table className="w-full text-left">
@@ -121,17 +116,17 @@ export function DispenseView({
               <th className="px-3 py-3 text-right font-medium">Ya entregado</th>
               <th className="px-3 py-3 text-right font-medium">Pendiente</th>
               <th className="px-3 py-3 text-right font-medium">Stock</th>
-              <th className="px-5 py-3 text-right font-medium">{outcome ? "Resultado" : "A entregar"}</th>
+              <th className="px-5 py-3 text-right font-medium">{open ? "A entregar" : "Estado"}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {(outcome ? outcome.lines.map((l) => l.item) : items).map((item) => (
+            {items.map((item) => (
               <ItemRow
                 key={item.id}
                 item={item}
                 allergic={Boolean(item.allergen_group && patient.allergies.includes(item.allergen_group))}
-                outcome={outcome?.lines.find((l) => l.item.id === item.id)}
-                editable={open && !outcome}
+                result={result?.lines[item.id!]}
+                editable={open}
                 value={quantities[item.id!] ?? ""}
                 onChange={(v) => setQuantities((q) => ({ ...q, [item.id!]: v }))}
                 disabled={pending}
@@ -142,14 +137,14 @@ export function DispenseView({
       </div>
 
       <div className="flex justify-end gap-3">
-        {open && !outcome ? (
+        {open ? (
           <>
             <Link href="/farmacia" className={buttonVariants({ variant: "outline", size: "xl" })}>
-              Cancelar
+              {result ? "Volver a la bandeja" : "Cancelar"}
             </Link>
             <Button size="xl" disabled={pending || invalid || nothing} onClick={dispense}>
               {pending ? <Loader2 className="animate-spin" /> : <Pill />}
-              Dispensar
+              {prescription.status === "parcial" ? "Entregar pendiente" : "Dispensar"}
             </Button>
           </>
         ) : (
@@ -200,7 +195,7 @@ function PatientCard({ patient }: { patient: Tables<"patients"> }) {
 function ItemRow({
   item,
   allergic,
-  outcome,
+  result,
   editable,
   value,
   onChange,
@@ -208,7 +203,7 @@ function ItemRow({
 }: {
   item: Item
   allergic: boolean
-  outcome: OutcomeLine | undefined
+  result: LineResult | undefined
   editable: boolean
   value: string
   onChange: (v: string) => void
@@ -236,6 +231,7 @@ function ItemRow({
             Paciente alérgico a {item.allergen_group}
           </p>
         )}
+        {result?.message && <LineMessage result={result} />}
       </td>
       <Num value={item.quantity_prescribed} />
       <Num value={item.quantity_dispensed} />
@@ -251,12 +247,10 @@ function ItemRow({
         </span>
       </td>
       <td className="px-5 py-4 text-right">
-        {outcome ? (
-          <OutcomeCell line={outcome} />
-        ) : pendingQty === 0 ? (
+        {pendingQty === 0 ? (
           <span className="inline-flex items-center gap-1 text-sm font-medium text-ok">
             <CircleCheck className="size-4" />
-            Entregado
+            Completo
           </span>
         ) : editable ? (
           <div className="ml-auto w-28">
@@ -280,56 +274,72 @@ function ItemRow({
             )}
           </div>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-sm text-muted-foreground">No entregado</span>
         )}
       </td>
     </tr>
   )
 }
 
-function OutcomeCell({ line }: { line: OutcomeLine }) {
+/** Explicación de la línea tras dispensar: lo entregado ahora y por qué queda pendiente. */
+function LineMessage({ result }: { result: LineResult }) {
+  const stock = result.kind === "stock"
   return (
-    <div className="text-sm whitespace-nowrap">
-      <p className="font-semibold text-ok tabular-nums">Entregado: {line.given}</p>
-      {line.remaining > 0 ? (
-        <p className="font-semibold text-[#86601f] tabular-nums">
-          Faltante: {line.remaining}
-          {line.noStock && <span className="font-normal"> (sin stock)</span>}
-        </p>
-      ) : (
-        <p className="text-muted-foreground">Completo</p>
+    <p
+      className={cn(
+        "mt-2 flex items-start gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium",
+        stock ? "bg-warning/12 text-[#86601f]" : "bg-secondary text-secondary-foreground",
       )}
-    </div>
+    >
+      {stock ? <TriangleAlert className="mt-0.5 size-4 shrink-0" /> : <Pill className="mt-0.5 size-4 shrink-0" />}
+      <span>
+        {result.given > 0 && <span className="tabular-nums">Entregado ahora: {result.given}. </span>}
+        {result.message}
+      </span>
+    </p>
   )
 }
 
-function OutcomeBanner({ outcome }: { outcome: Outcome }) {
-  if (outcome.status === "dispensada") {
+function ResultBanner({ result }: { result: Result }) {
+  if (result.status === "dispensada") {
     return (
       <p className="flex items-center gap-3 rounded-xl border border-ok/30 bg-ok/10 p-4 text-lg font-semibold text-ok">
         <CircleCheck className="size-6 shrink-0" />
-        Receta {outcome.folio} entregada completa.
+        Receta {result.folio} entregada completa.
       </p>
     )
   }
-  const missing = outcome.lines.filter((l) => l.remaining > 0)
-  const total = missing.reduce((n, l) => n + l.remaining, 0)
-  const parts = missing.map(
-    (l) => `${l.remaining} ${unitLabel(l.item.form ?? "unidad", l.remaining)} de ${l.item.medication_name}`,
-  )
-  const given = outcome.lines.some((l) => l.given > 0)
-
   return (
     <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/12 p-4 text-[#86601f]">
       <TriangleAlert className="mt-0.5 size-6 shrink-0" />
       <div>
         <p className="text-lg font-semibold">
-          {given ? "Receta parcial" : "No se entregó ningún medicamento"}: {total === 1 ? "falta" : "faltan"}{" "}
-          {joinList(parts)}. Queda en bandeja.
+          {result.given > 0
+            ? `Entrega registrada. La receta ${result.folio} queda parcial en la bandeja.`
+            : "No se entregó ningún medicamento."}
         </p>
-        <p className="text-sm">Se podrá completar cuando ingrese stock.</p>
+        <p className="text-sm">El detalle de cada medicamento está en la tabla. Puede entregar el resto cuando corresponda.</p>
       </div>
     </div>
+  )
+}
+
+/** Receta cerrada (dispensada o anulada): solo lectura. */
+function ClosedSummary({ prescription }: { prescription: Prescription }) {
+  if (prescription.status === "anulada") {
+    return (
+      <p className="flex items-center gap-3 rounded-xl bg-muted/60 p-4 text-muted-foreground">
+        <Ban className="size-5 shrink-0" />
+        Esta receta fue anulada: no se puede dispensar.
+      </p>
+    )
+  }
+  return (
+    <p className="flex items-center gap-3 rounded-xl border border-ok/30 bg-ok/10 p-4 font-medium text-ok">
+      <CircleCheck className="size-5 shrink-0" />
+      Receta entregada completa
+      {prescription.dispensed_at && <> el {formatDateTime(prescription.dispensed_at)}</>}. No hay nada pendiente.
+    </p>
   )
 }
 
@@ -341,6 +351,10 @@ function Num({ value, strong }: { value: number | null; strong?: boolean }) {
   )
 }
 
+function pendingQuantities(items: Item[]): Record<string, string> {
+  return Object.fromEntries(items.map((i) => [i.id!, String(i.quantity_pending ?? 0)]))
+}
+
 function qtyError(value: string | undefined, max: number): string | null {
   if (value === undefined || value.trim() === "") return "Ingrese una cantidad"
   const n = Number(value)
@@ -349,29 +363,41 @@ function qtyError(value: string | undefined, max: number): string | null {
   return null
 }
 
-function buildOutcome(result: DispenseResult, items: Item[]): Outcome {
+/**
+ * Por línea: si se entregó menos de lo solicitado, faltó stock; si se entregó lo solicitado pero
+ * queda pendiente, el farmacéutico entregó menos a propósito. N = pendiente después, X = recetado.
+ */
+function buildResult(result: DispenseResult, before: Item[]): Result {
+  const lines: Record<string, LineResult> = {}
+  for (const line of result.lines) {
+    const item = before.find((i) => i.id === line.item_id)
+    if (!item) continue
+    const left = (item.quantity_pending ?? 0) - line.dispensed
+    const total = item.quantity_prescribed ?? 0
+    lines[line.item_id] =
+      left <= 0
+        ? { given: line.dispensed, kind: "complete", message: "Línea completa." }
+        : line.shortage > 0
+          ? {
+              given: line.dispensed,
+              kind: "stock",
+              message: `Faltan ${left} de ${total} por falta de stock. Se completará cuando ingrese stock.`,
+            }
+          : {
+              given: line.dispensed,
+              kind: "partial",
+              message: `Entrega parcial: quedan ${left} de ${total} pendientes de entregar.`,
+            }
+  }
   return {
     folio: result.folio,
     status: result.status,
-    lines: items.map((item) => {
-      const line = result.lines.find((l) => l.item_id === item.id)
-      const given = line?.dispensed ?? 0
-      return {
-        item,
-        given,
-        remaining: (item.quantity_pending ?? 0) - given,
-        noStock: (line?.shortage ?? 0) > 0,
-      }
-    }),
+    given: result.lines.reduce((n, l) => n + l.dispensed, 0),
+    lines,
   }
 }
 
 /** "Dr. X · Pediatría" (sin repetir el establecimiento si se llama igual que la especialidad). */
 function doctorLine(d: NonNullable<Doctor>): string {
   return [...new Set([d.doctor_name, d.specialty_name, d.establishment_name])].filter(Boolean).join(" · ")
-}
-
-/** ["a", "b", "c"] → "a, b y c" */
-function joinList(parts: string[]): string {
-  return parts.length <= 1 ? (parts[0] ?? "") : `${parts.slice(0, -1).join(", ")} y ${parts.at(-1)}`
 }

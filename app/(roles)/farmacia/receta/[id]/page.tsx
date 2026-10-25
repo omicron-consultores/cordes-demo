@@ -23,7 +23,7 @@ export default function Page({ params }: PageProps<"/farmacia/receta/[id]">) {
 async function Prescription({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const [rx, header, items] = await Promise.all([
-    supabase.from("prescriptions").select("folio, status, notes, issued_at, patient_id").eq("id", id).maybeSingle(),
+    supabase.from("prescriptions").select("folio, status, notes, issued_at, dispensed_at, patient_id").eq("id", id).maybeSingle(),
     // La bandeja trae médico y establecimiento ya unidos (solo recetas emitidas o parciales).
     supabase
       .from("v_prescription_queue")
