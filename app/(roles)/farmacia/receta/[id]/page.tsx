@@ -2,13 +2,14 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { ArrowLeft } from "lucide-react"
 import { DispenseView } from "@/components/farmacia/dispense-view"
+import { CONTAINER } from "@/components/layout/container"
 import { DataError } from "@/components/layout/data-error"
 import { buttonVariants } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
 
 export default function Page({ params }: PageProps<"/farmacia/receta/[id]">) {
   return (
-    <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8">
+    <main className={`${CONTAINER} flex-1 py-6 lg:py-8`}>
       <Link href="/farmacia" className={buttonVariants({ variant: "ghost", className: "-ml-3 mb-3" })}>
         <ArrowLeft />
         Volver a la bandeja

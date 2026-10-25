@@ -3,10 +3,11 @@
 import { useState, useSyncExternalStore } from "react"
 import { CalendarPlus, CalendarX2, FilterX, Phone, Smartphone, Store, type LucideIcon } from "lucide-react"
 import { notify } from "@/components/layout/notice"
+import { TodayLine } from "@/components/layout/today-line"
 import { APPOINTMENT_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button } from "@/components/ui/button"
 import type { Database } from "@/lib/database.types"
-import { capitalize, formatDate, formatShortDate, formatTime } from "@/lib/format"
+import { formatShortDate, formatTime } from "@/lib/format"
 import { supabase, type Tables, type Views } from "@/lib/supabase"
 import { useRealtimeRefresh } from "@/lib/use-realtime-refresh"
 import { cn } from "@/lib/utils"
@@ -71,10 +72,7 @@ export function AgendaBoard({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Agenda del día</h1>
-          <p className="flex items-center gap-2 text-muted-foreground">
-            {capitalize(formatDate(today))}
-            <LiveDot live={live} />
-          </p>
+          <TodayLine today={today} live={live} liveTitle="Se actualiza sola cuando se agenda o cambia una cita" />
         </div>
         <Button size="lg" onClick={() => setBooking(true)}>
           <CalendarPlus />
@@ -279,18 +277,6 @@ function StatusChip({
         {count}
       </span>
     </button>
-  )
-}
-
-function LiveDot({ live }: { live: boolean }) {
-  return (
-    <span
-      className={cn("inline-flex items-center gap-1.5 text-xs", live ? "text-ok" : "text-muted-foreground")}
-      title={live ? "Se actualiza sola cuando se agenda o cambia una cita" : "Conectando…"}
-    >
-      <span className={cn("size-2 rounded-full", live ? "animate-pulse bg-ok" : "bg-muted-foreground/50")} />
-      {live ? "En vivo" : "Conectando…"}
-    </span>
   )
 }
 

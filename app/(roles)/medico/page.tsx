@@ -1,5 +1,6 @@
 import { connection } from "next/server"
 import { Suspense } from "react"
+import { CONTAINER } from "@/components/layout/container"
 import { DataError } from "@/components/layout/data-error"
 import { DoctorAgenda } from "@/components/medico/doctor-agenda"
 import { DoctorSwitcher, type DoctorChoice } from "@/components/medico/doctor-switcher"
@@ -9,7 +10,7 @@ import { supabase } from "@/lib/supabase"
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 lg:py-8">
+    <main className={`${CONTAINER} flex-1 py-6 lg:py-8`}>
       <Suspense fallback={<AgendaSkeleton />}>
         <Agenda />
       </Suspense>

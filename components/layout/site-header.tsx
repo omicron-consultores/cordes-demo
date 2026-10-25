@@ -5,6 +5,7 @@ import cordesLogo from "@/public/brand/cordes.png"
 import type { Role } from "@/lib/roles"
 import { getActorName } from "@/lib/session"
 import { cn } from "@/lib/utils"
+import { CONTAINER } from "./container"
 import { DemoMenu } from "./demo-menu"
 import { RoleSwitcher } from "./role-switcher"
 
@@ -17,7 +18,7 @@ export function SiteHeader({ role, className }: { role?: Role; className?: strin
         className,
       )}
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 md:px-6">
+      <div className={cn(CONTAINER, "flex h-16 items-center gap-3")}>
         <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Inicio · elegir rol">
           <Image src={cordesLogo} alt="CORDES Cochabamba" priority className="h-9 w-auto" />
           <span className="hidden border-l pl-3 text-sm leading-tight text-muted-foreground lg:block">

@@ -6,8 +6,9 @@ import { KpiRow } from "@/components/gerencia/kpi-row"
 import { LiveStatus } from "@/components/gerencia/live-status"
 import { EmptyState, Panel } from "@/components/gerencia/panel"
 import { RankedBars } from "@/components/gerencia/ranked-bars"
+import { CONTAINER } from "@/components/layout/container"
 import { DataError } from "@/components/layout/data-error"
-import { boToday, capitalize, formatBs, formatDate, formatNumber } from "@/lib/format"
+import { boToday, formatBs, formatNumber } from "@/lib/format"
 import { supabase } from "@/lib/supabase"
 
 const TOP_MEDICATIONS = 10
@@ -15,7 +16,7 @@ const TOP_DIAGNOSES = 8
 
 export default function Page() {
   return (
-    <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8">
+    <main className={`${CONTAINER} flex-1 py-6 lg:py-8`}>
       <Suspense fallback={<DashboardSkeleton />}>
         <Dashboard />
       </Suspense>
@@ -42,12 +43,9 @@ async function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Tablero de gerencia</h1>
-          <p className="text-lg text-muted-foreground">{capitalize(formatDate(today))}</p>
-        </div>
-        <LiveStatus />
+      <div>
+        <h1 className="text-3xl font-semibold tracking-tight">Tablero de gerencia</h1>
+        <LiveStatus today={today} />
       </div>
 
       <KpiRow kpis={kpis.data} />

@@ -4,9 +4,10 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { CircleCheck, ClipboardCheck, Pill, ShieldAlert, TriangleAlert } from "lucide-react"
 import { notify } from "@/components/layout/notice"
+import { TodayLine } from "@/components/layout/today-line"
 import { PHARMACY_STATUS, StatusPill } from "@/components/paciente/status"
 import { buttonVariants } from "@/components/ui/button"
-import { capitalize, folioLabel, formatDate, formatShortDate, formatTime } from "@/lib/format"
+import { folioLabel, formatShortDate, formatTime } from "@/lib/format"
 import { supabase, type Tables, type Views } from "@/lib/supabase"
 import { useRealtimeRefresh } from "@/lib/use-realtime-refresh"
 import { cn } from "@/lib/utils"
@@ -36,10 +37,7 @@ export function PrescriptionQueue({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Bandeja de recetas</h1>
-        <p className="flex items-center gap-2 text-muted-foreground">
-          {capitalize(formatDate(today))}
-          <LiveDot live={live} />
-        </p>
+        <TodayLine today={today} live={live} liveTitle="Se actualiza sola cuando llega o se dispensa una receta" />
       </div>
 
       <dl className="grid gap-4 sm:grid-cols-3">
@@ -168,18 +166,6 @@ function Kpi({
         )}
       />
     </div>
-  )
-}
-
-function LiveDot({ live }: { live: boolean }) {
-  return (
-    <span
-      className={cn("inline-flex items-center gap-1.5 text-xs font-normal", live ? "text-ok" : "text-muted-foreground")}
-      title={live ? "Se actualiza sola cuando llega o se dispensa una receta" : "Conectando…"}
-    >
-      <span className={cn("size-2 rounded-full", live ? "animate-pulse bg-ok" : "bg-muted-foreground/50")} />
-      {live ? "En vivo" : "Conectando…"}
-    </span>
   )
 }
 

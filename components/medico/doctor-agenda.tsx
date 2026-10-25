@@ -4,10 +4,11 @@ import { useState, useTransition } from "react"
 import { CalendarX2, Loader2, ShieldAlert, Stethoscope } from "lucide-react"
 import { startEncounter } from "@/app/(roles)/medico/actions"
 import { NoShowButton } from "@/components/agenda/no-show-button"
+import { TodayLine } from "@/components/layout/today-line"
 import { notify } from "@/components/layout/notice"
 import { APPOINTMENT_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button } from "@/components/ui/button"
-import { capitalize, formatDate, formatShortDate, formatTime } from "@/lib/format"
+import { formatShortDate, formatTime } from "@/lib/format"
 import type { Tables, Views } from "@/lib/supabase"
 import { useRealtimeRefresh } from "@/lib/use-realtime-refresh"
 import { cn } from "@/lib/utils"
@@ -51,10 +52,13 @@ export function DoctorAgenda({
       {header}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-2 text-lg font-medium">
-          Agenda de hoy · {capitalize(formatDate(today))}
-          <LiveDot live={live} />
-        </p>
+        <TodayLine
+          today={today}
+          live={live}
+          prefix="Agenda de hoy · "
+          liveTitle="Se actualiza sola cuando se agenda o cambia una cita"
+          className="text-lg font-medium text-foreground"
+        />
         <dl className="flex gap-6 text-sm text-muted-foreground">
           <Stat label="Por atender" value={count("programada") + count("en_atencion")} />
           <Stat label="Atendidas" value={count("atendida")} />
@@ -172,18 +176,6 @@ function Stat({ label, value }: { label: string; value: number }) {
       <dd className="text-2xl font-semibold text-foreground tabular-nums">{value}</dd>
       <dt>{label}</dt>
     </div>
-  )
-}
-
-function LiveDot({ live }: { live: boolean }) {
-  return (
-    <span
-      className={cn("inline-flex items-center gap-1.5 text-xs font-normal", live ? "text-ok" : "text-muted-foreground")}
-      title={live ? "Se actualiza sola cuando se agenda o cambia una cita" : "Conectando…"}
-    >
-      <span className={cn("size-2 rounded-full", live ? "animate-pulse bg-ok" : "bg-muted-foreground/50")} />
-      {live ? "En vivo" : "Conectando…"}
-    </span>
   )
 }
 

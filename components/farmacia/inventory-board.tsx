@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { FilterX, PackagePlus, Search } from "lucide-react"
+import { TodayLine } from "@/components/layout/today-line"
 import { LOT_STATUS, MOVEMENT_TYPE, STOCK_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -76,10 +77,12 @@ export function InventoryBoard({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Inventario</h1>
-          <p className="flex flex-wrap items-center gap-x-2 text-muted-foreground">
-            Farmacia Planta Central
-            <LiveDot live={live} />
-          </p>
+          <TodayLine
+            today={today}
+            live={live}
+            prefix="Farmacia Planta Central · "
+            liveTitle="Se actualiza sola con cada ingreso, dispensación o baja"
+          />
         </div>
         <dl className="flex gap-6 text-sm text-muted-foreground">
           <Stat label="Valor del inventario" value={formatBs(value)} />
@@ -447,18 +450,6 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "wa
       </dd>
       <dt>{label}</dt>
     </div>
-  )
-}
-
-function LiveDot({ live }: { live: boolean }) {
-  return (
-    <span
-      className={cn("inline-flex items-center gap-1.5 text-xs font-normal", live ? "text-ok" : "text-muted-foreground")}
-      title={live ? "Se actualiza sola con cada ingreso, dispensación o baja" : "Conectando…"}
-    >
-      <span className={cn("size-2 rounded-full", live ? "animate-pulse bg-ok" : "bg-muted-foreground/50")} />
-      {live ? "En vivo" : "Conectando…"}
-    </span>
   )
 }
 

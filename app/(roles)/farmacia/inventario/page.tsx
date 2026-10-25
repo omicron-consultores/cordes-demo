@@ -1,6 +1,7 @@
 import { connection } from "next/server"
 import { Suspense } from "react"
 import { InventoryBoard } from "@/components/farmacia/inventory-board"
+import { CONTAINER } from "@/components/layout/container"
 import { DataError } from "@/components/layout/data-error"
 import { boToday } from "@/lib/format"
 import { supabase } from "@/lib/supabase"
@@ -9,7 +10,7 @@ const MOVEMENTS_LIMIT = 100
 
 export default function Page({ searchParams }: PageProps<"/farmacia/inventario">) {
   return (
-    <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8">
+    <main className={`${CONTAINER} flex-1 py-6 lg:py-8`}>
       <Suspense fallback={<InventorySkeleton />}>
         <Inventory searchParams={searchParams} />
       </Suspense>

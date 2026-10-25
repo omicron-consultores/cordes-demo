@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Suspense } from "react"
 import { Boxes, ClipboardList, type LucideIcon } from "lucide-react"
+import { CONTAINER } from "@/components/layout/container"
 import { cn } from "@/lib/utils"
 
 const ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
@@ -27,7 +28,7 @@ function ActiveNav() {
 function NavBar({ pathname }: { pathname: string | null }) {
   return (
     <nav aria-label="Secciones de Farmacia" className="border-b bg-card">
-      <ul className="mx-auto flex max-w-7xl gap-1 px-4 sm:px-6">
+      <ul className={cn(CONTAINER, "flex gap-1")}>
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const inventory = !!pathname?.startsWith("/farmacia/inventario")
           const active = href === "/farmacia" ? pathname !== null && !inventory : inventory
