@@ -25,21 +25,6 @@ import {
 
 export function DemoMenu() {
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
-
-  function reset() {
-    setError(null)
-    startTransition(async () => {
-      const result = await resetDemo()
-      if (!result.ok) {
-        setError(result.error)
-        return
-      }
-      setConfirmOpen(false)
-      notify.success("Demo reiniciada", { description: "Los datos volvieron a su estado inicial." })
-    })
-  }
 
   return (
     <>
@@ -57,32 +42,64 @@ export function DemoMenu() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog
-        open={confirmOpen}
-        onOpenChange={(open) => {
-          if (pending) return
-          setConfirmOpen(open)
-          setError(null)
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Reiniciar la demo?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se borrarán las citas, atenciones, recetas y movimientos de inventario creados y se
-              restaurarán los datos iniciales en todos los dispositivos.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <FormAlert message={error} />
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={reset} disabled={pending}>
-              {pending && <Loader2 className="animate-spin" />}
-              {pending ? "Reiniciando…" : "Sí, reiniciar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ResetDemoDialog open={confirmOpen} onOpenChange={setConfirmOpen} />
     </>
+  )
+}
+
+/** Confirmación de "Reiniciar demo" (reset_demo). `onReset` corre tras reiniciar (p. ej. recargar iframes). */
+export function ResetDemoDialog({
+  open,
+  onOpenChange,
+  onReset,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onReset?: () => void
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  function reset() {
+    setError(null)
+    startTransition(async () => {
+      const result = await resetDemo()
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      onOpenChange(false)
+      onReset?.()
+      notify.success("Demo reiniciada", { description: "Los datos volvieron a su estado inicial." })
+    })
+  }
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (pending) return
+        onOpenChange(next)
+        setError(null)
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Reiniciar la demo?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Se borrarán las citas, atenciones, recetas y movimientos de inventario creados y se
+            restaurarán los datos iniciales en todos los dispositivos.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <FormAlert message={error} />
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={reset} disabled={pending}>
+            {pending && <Loader2 className="animate-spin" />}
+            {pending ? "Reiniciando…" : "Sí, reiniciar"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
