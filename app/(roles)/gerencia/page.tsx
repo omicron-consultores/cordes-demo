@@ -2,14 +2,14 @@ import { connection } from "next/server"
 import { Suspense } from "react"
 import { ActivityChart } from "@/components/gerencia/activity-chart"
 import { AlertsPanel } from "@/components/gerencia/alerts-panel"
-import { KpiRow } from "@/components/gerencia/kpi-row"
+import { KpiRow, type DailyAverages } from "@/components/gerencia/kpi-row"
 import { LiveStatus } from "@/components/gerencia/live-status"
 import { EmptyState, Panel } from "@/components/gerencia/panel"
 import { RankedBars } from "@/components/gerencia/ranked-bars"
 import { CONTAINER } from "@/components/layout/container"
 import { DataError } from "@/components/layout/data-error"
 import { boToday, formatBs, formatNumber } from "@/lib/format"
-import { supabase } from "@/lib/supabase"
+import { supabase, type Views } from "@/lib/supabase"
 
 const TOP_MEDICATIONS = 10
 const TOP_DIAGNOSES = 8
@@ -29,7 +29,7 @@ async function Dashboard() {
 
   const [kpis, activity, medications, diagnoses, stock, lots] = await Promise.all([
     supabase.from("v_kpis_today").select("*").single(),
-    supabase.from("v_daily_activity").select("day, attended, prescriptions").order("day"),
+    supabase.from("v_daily_activity").select("*").order("day"),
     supabase.from("v_top_medications_30d").select("*").limit(TOP_MEDICATIONS),
     supabase.from("v_diagnoses_30d").select("*").limit(TOP_DIAGNOSES),
     supabase.from("v_medication_stock").select("*").in("stock_status", ["agotado", "critico", "bajo"]),
@@ -48,7 +48,7 @@ async function Dashboard() {
         <LiveStatus today={today} />
       </div>
 
-      <KpiRow kpis={kpis.data} />
+      <KpiRow kpis={kpis.data} averages={dailyAverages(activity.data, today)} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Panel title="Actividad de los últimos 30 días" className="lg:col-span-2">
@@ -109,6 +109,23 @@ async function Dashboard() {
       </div>
     </div>
   )
+}
+
+/**
+ * Promedio diario de los últimos 30 días (v_daily_activity), para comparar los KPI de hoy.
+ * Solo días hábiles anteriores a hoy: los fines de semana sin consulta bajarían el promedio.
+ */
+function dailyAverages(days: Views<"v_daily_activity">[], today: string): DailyAverages {
+  const past = days.filter((d) => d.day! < today && ![0, 6].includes(new Date(`${d.day}T12:00:00Z`).getUTCDay()))
+  const avg = (key: keyof DailyAverages) =>
+    past.length ? Math.round(past.reduce((sum, d) => sum + (d[key] ?? 0), 0) / past.length) : undefined
+  return {
+    appointments: avg("appointments"),
+    attended: avg("attended"),
+    no_show: avg("no_show"),
+    prescriptions: avg("prescriptions"),
+    units_dispensed: avg("units_dispensed"),
+  }
 }
 
 function DashboardSkeleton() {

@@ -70,9 +70,10 @@ function QueueItem({ rx, today, fresh }: { rx: QueueRow; today: string; fresh: b
   const status = PHARMACY_STATUS[rx.status!]
 
   return (
+    // Toda la fila abre la receta: el enlace "Dispensar" se extiende sobre la fila (after:inset-0).
     <li
       className={cn(
-        "flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 transition-colors duration-1000",
+        "relative flex cursor-pointer flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 transition-colors duration-1000",
         fresh ? "bg-highlight/10" : "hover:bg-muted/40",
       )}
     >
@@ -106,11 +107,11 @@ function QueueItem({ rx, today, fresh }: { rx: QueueRow; today: string; fresh: b
         </p>
       </div>
 
-      <div className="w-24 shrink-0 text-sm">
+      <div className="w-36 shrink-0 text-sm">
         <p className="font-medium tabular-nums">
           {rx.items} {rx.items === 1 ? "ítem" : "ítems"}
         </p>
-        <p className="text-muted-foreground tabular-nums">{rx.units_pending} u. pend.</p>
+        <p className="text-muted-foreground tabular-nums">{rx.units_pending} unid. pendientes</p>
       </div>
 
       <div className="flex w-36 shrink-0 flex-col items-start gap-1.5">
@@ -119,7 +120,10 @@ function QueueItem({ rx, today, fresh }: { rx: QueueRow; today: string; fresh: b
       </div>
 
       <div className="flex w-full justify-end sm:w-auto">
-        <Link href={`/farmacia/receta/${rx.id}`} className={buttonVariants({ size: "lg" })}>
+        <Link
+          href={`/farmacia/receta/${rx.id}`}
+          className={buttonVariants({ size: "lg", className: "after:absolute after:inset-0" })}
+        >
           <Pill />
           Dispensar
         </Link>

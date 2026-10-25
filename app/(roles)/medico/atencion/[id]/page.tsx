@@ -3,7 +3,7 @@ import { Suspense } from "react"
 import { ArrowLeft } from "lucide-react"
 import { CONTAINER } from "@/components/layout/container"
 import { DataError } from "@/components/layout/data-error"
-import { EncounterForm } from "@/components/medico/encounter-form"
+import { EncounterForm, type LastVitals } from "@/components/medico/encounter-form"
 import { EncounterSummary } from "@/components/medico/encounter-summary"
 import { PatientContext, type PastEncounter } from "@/components/medico/patient-context"
 import { StatusPill } from "@/components/paciente/status"
@@ -101,7 +101,7 @@ async function Encounter({ params }: { params: Promise<{ id: string }> }) {
           <EncounterForm
             encounterId={encounter.id!}
             initialComplaint={encounter.chief_complaint ?? ""}
-            lastHeight={history.data.find((e) => e.height_cm !== null)?.height_cm ?? null}
+            lastVitals={lastVitals(history.data)}
             cie10={cie10.data}
             medications={medications.data.map((m) => ({
               code: m.code!,
@@ -119,6 +119,17 @@ async function Encounter({ params }: { params: Promise<{ id: string }> }) {
     </div>
   )
 }
+
+/** Para cada signo vital, el valor de la atención más reciente que lo registró. */
+function lastVitals(history: { [K in keyof LastVitals]-?: number | null }[]): LastVitals {
+  const out: LastVitals = {}
+  for (const key of VITALS) {
+    const value = history.find((e) => e[key] !== null)?.[key]
+    if (value != null) out[key] = value
+  }
+  return out
+}
+const VITALS = ["bp_systolic", "bp_diastolic", "heart_rate", "temperature_c", "weight_kg", "height_cm"] as const
 
 function EncounterSkeleton() {
   return (

@@ -42,7 +42,7 @@ export function DoctorSwitcher({
       >
         {doctors.map((d) => (
           <option key={d.license} value={d.license}>
-            {d.name} · {d.specialty}
+            {d.name}
           </option>
         ))}
       </SelectField>

@@ -162,7 +162,7 @@ function StockTab({ stock, today }: { stock: StockRow[]; today: string }) {
           const days = m.next_expiry ? daysBetween(today, m.next_expiry) : null
           return (
             <tr key={m.code} className="hover:bg-muted/40">
-              <td className="px-5 py-3 text-sm text-muted-foreground tabular-nums">{m.code}</td>
+              <td className="px-5 py-3 text-sm whitespace-nowrap text-muted-foreground tabular-nums">{m.code}</td>
               <td className="px-3 py-3">
                 <p className="font-medium">
                   {m.name} <span className="font-normal text-muted-foreground">{m.concentration}</span>
@@ -180,7 +180,7 @@ function StockTab({ stock, today }: { stock: StockRow[]; today: string }) {
               <td className="px-3 py-3">
                 <StatusPill {...STOCK_STATUS[m.stock_status ?? "ok"]} />
               </td>
-              <td className="px-3 py-3 text-right tabular-nums">{formatBs(m.stock_value ?? 0)}</td>
+              <td className="px-3 py-3 text-right whitespace-nowrap tabular-nums">{formatBs(m.stock_value ?? 0)}</td>
               <td className="px-5 py-3 text-sm whitespace-nowrap tabular-nums">
                 {m.next_expiry ? (
                   <>
@@ -442,7 +442,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "wa
     <div className="text-right">
       <dd
         className={cn(
-          "text-2xl font-semibold tabular-nums",
+          "text-2xl font-semibold whitespace-nowrap tabular-nums",
           tone === "critical" ? "text-critical" : tone === "warning" ? "text-[#86601f]" : "text-foreground",
         )}
       >

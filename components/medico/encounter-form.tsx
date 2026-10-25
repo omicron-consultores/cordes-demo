@@ -50,20 +50,25 @@ const FIELD_ORDER: EncounterField[] = [
   "plan",
 ]
 
+/** Últimos signos vitales registrados (cada uno de la atención más reciente que lo tenga). */
+export type LastVitals = Partial<
+  Record<"bp_systolic" | "bp_diastolic" | "heart_rate" | "temperature_c" | "weight_kg" | "height_cm", number>
+>
+
 const RX_FIELD_ORDER = ["dose", "frequency", "duration_days", "quantity", "instructions"] as const
 
 /** Consulta actual: motivo, signos vitales, hallazgos, diagnóstico CIE-10, plan y receta → complete_encounter. */
 export function EncounterForm({
   encounterId,
   initialComplaint,
-  lastHeight,
+  lastVitals,
   cie10,
   medications,
   patient,
 }: {
   encounterId: string
   initialComplaint: string
-  lastHeight: number | null
+  lastVitals: LastVitals
   cie10: Cie10Option[]
   medications: MedicationOption[]
   patient: { name: string; sex: string; allergies: string[] }
@@ -147,6 +152,9 @@ export function EncounterForm({
     "aria-invalid": Boolean(errors[name]) || undefined,
     "aria-describedby": errors[name] ? `${name}-error` : undefined,
   })
+  // Placeholder con el último valor registrado: "Últ. 136".
+  const last = (name: keyof LastVitals) =>
+    lastVitals[name] !== undefined ? `Últ. ${String(lastVitals[name]).replace(".", ",")}` : undefined
   const bmi = bodyMassIndex(values.weight_kg, values.height_cm)
   const diagnosis = cie10.find((o) => o.code === values.diagnosis_code)
 
@@ -169,6 +177,7 @@ export function EncounterForm({
               <div className="flex items-center gap-1.5">
                 <input
                   {...field("bp_systolic")}
+                  placeholder={lastVitals.bp_systolic?.toString()}
                   inputMode="numeric"
                   aria-label="Presión sistólica"
                   className={cn(inputClass, "h-11 text-center tabular-nums")}
@@ -176,25 +185,38 @@ export function EncounterForm({
                 <span className="text-lg text-muted-foreground">/</span>
                 <input
                   {...field("bp_diastolic")}
+                  placeholder={lastVitals.bp_diastolic?.toString()}
                   inputMode="numeric"
                   aria-label="Presión diastólica"
                   className={cn(inputClass, "h-11 text-center tabular-nums")}
                 />
               </div>
+              {/* Dos campos angostos: la cifra va en cada uno y el "Últ." completo, debajo. */}
+              {lastVitals.bp_systolic !== undefined && !errors.bp_systolic && !errors.bp_diastolic && (
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  Últ. {lastVitals.bp_systolic}/{lastVitals.bp_diastolic ?? "—"}
+                </p>
+              )}
               <ErrorText name="bp_systolic" error={errors.bp_systolic} />
               <ErrorText name="bp_diastolic" error={errors.bp_diastolic} />
             </div>
-            <Measure label="Frecuencia cardiaca" unit="lpm" error={errors.heart_rate} {...field("heart_rate")} />
-            <Measure label="Temperatura" unit="°C" decimal error={errors.temperature_c} {...field("temperature_c")} />
-            <Measure label="Peso" unit="kg" decimal error={errors.weight_kg} {...field("weight_kg")} />
             <Measure
-              label="Talla"
-              unit="cm"
-              hint={lastHeight ? `Última registrada: ${String(lastHeight).replace(".", ",")} cm` : undefined}
-              decimal
-              error={errors.height_cm}
-              {...field("height_cm")}
+              label="Frecuencia cardiaca"
+              unit="lpm"
+              placeholder={last("heart_rate")}
+              error={errors.heart_rate}
+              {...field("heart_rate")}
             />
+            <Measure
+              label="Temperatura"
+              unit="°C"
+              decimal
+              placeholder={last("temperature_c")}
+              error={errors.temperature_c}
+              {...field("temperature_c")}
+            />
+            <Measure label="Peso" unit="kg" decimal placeholder={last("weight_kg")} error={errors.weight_kg} {...field("weight_kg")} />
+            <Measure label="Talla" unit="cm" decimal placeholder={last("height_cm")} error={errors.height_cm} {...field("height_cm")} />
             <div className="space-y-1.5">
               <p className="text-sm font-medium">
                 IMC <span className="font-normal text-muted-foreground">(kg/m²)</span>
@@ -244,8 +266,19 @@ export function EncounterForm({
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-3 border-t bg-muted/30 px-5 py-4 sm:px-6">
-        <FormAlert message={formError} className="mr-auto py-2" />
+      {/* Fija al pie de la ventana mientras se recorre el formulario. */}
+      <div className="sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-3 rounded-b-xl border-t bg-card/95 px-5 py-4 shadow-[0_-8px_24px_-12px_rgba(15,36,48,0.18)] backdrop-blur sm:px-6">
+        <p className="mr-auto text-sm text-muted-foreground">
+          {lines.length === 0 ? (
+            "Sin receta"
+          ) : (
+            <>
+              <span className="font-semibold text-foreground tabular-nums">{lines.length}</span>{" "}
+              {lines.length === 1 ? "medicamento" : "medicamentos"} en la receta
+            </>
+          )}
+        </p>
+        <FormAlert message={formError} className="py-2" />
         <Button type="submit" size="lg" disabled={pending}>
           <CheckCircle2 />
           Finalizar atención
