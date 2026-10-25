@@ -356,17 +356,9 @@ function LineEditor({
           <input {...field("duration_days")} inputMode="numeric" className={cn(inputClass, "tabular-nums")} />
         </LineField>
         <LineField label="Cantidad" htmlFor={`rx-${index}-quantity`} error={errors.quantity}>
-          <div className="relative">
-            <input
-              {...field("quantity")}
-              inputMode="numeric"
-              className={cn(inputClass, "tabular-nums")}
-              style={{ paddingRight: `calc(${unit.length}ch + 1rem)` }}
-            />
-            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
-              {unit}
-            </span>
-          </div>
+          {/* La unidad va debajo y no dentro del campo: en la columna angosta tapaba el número. */}
+          <input {...field("quantity")} inputMode="numeric" className={cn(inputClass, "tabular-nums")} />
+          {!errors.quantity && <p className="text-xs text-muted-foreground">{unit}</p>}
         </LineField>
       </div>
 
