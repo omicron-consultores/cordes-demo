@@ -4,8 +4,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { ArrowLeft, CalendarCheck, ChevronRight, Loader2, MapPin, Stethoscope } from "lucide-react"
-import { toast } from "sonner"
 import { bookAppointment } from "@/app/(roles)/paciente/actions"
+import { FormAlert } from "@/components/layout/form-alert"
+import { notify } from "@/components/layout/notice"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { capitalize, formatDate, formatDateTime, formatTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -39,6 +40,7 @@ export function BookingWizard({
   const [slot, setSlot] = useState<string | null>(null)
   const [reason, setReason] = useState("")
   const [reloadKey, setReloadKey] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   function go(next: Step) {
@@ -48,13 +50,18 @@ export function BookingWizard({
 
   function confirm() {
     if (!doctor || !slot) return
+    setError(null)
     startTransition(async () => {
       const result = await bookAppointment({ doctorId: doctor.id, scheduledAt: slot, reason })
       if (result.ok) {
-        toast.success(`¡Listo! Su cita quedó agendada para el ${formatDateTime(slot)}.`)
-        router.replace("/paciente/citas")
+        notify.success("Cita agendada", {
+          description: `${capitalize(formatDateTime(slot))} · ${doctor.name}`,
+          action: { label: "Ver mis citas", href: "/paciente/citas" },
+        })
+        router.replace("/paciente")
       } else {
-        toast.error(result.error)
+        // Se muestra junto a los horarios (paso 3), que se vuelven a consultar.
+        setError(result.error)
         // El cupo pudo ocuparse mientras tanto: volver a elegir con datos frescos.
         setSlot(null)
         setReloadKey((k) => k + 1)
@@ -158,7 +165,17 @@ export function BookingWizard({
           <p className="-mt-3 mb-5 text-muted-foreground">
             {doctor.name} · {doctor.place}
           </p>
-          <SlotPicker doctorId={doctor.id} days={days} value={slot} onChange={setSlot} reloadKey={reloadKey} />
+          <FormAlert message={error} className="mb-5" />
+          <SlotPicker
+            doctorId={doctor.id}
+            days={days}
+            value={slot}
+            onChange={(s) => {
+              setSlot(s)
+              if (s) setError(null)
+            }}
+            reloadKey={reloadKey}
+          />
           <Button size="xl" className="mt-6 w-full" disabled={!slot} onClick={() => go(4)}>
             {slot ? `Continuar con las ${formatTime(slot)}` : "Elija un horario"}
           </Button>

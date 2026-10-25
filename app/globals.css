@@ -114,3 +114,19 @@
     @apply font-sans;
   }
 }
+/* Avisos (components/layout/notice.tsx): barra de tiempo restante. Sonner pausa los avisos
+   mientras el mouse está sobre la pila; la barra se pausa igual. */
+@keyframes notice-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.notice-progress {
+  animation: notice-progress linear forwards;
+}
+[data-sonner-toaster]:hover .notice-progress {
+  animation-play-state: paused;
+}

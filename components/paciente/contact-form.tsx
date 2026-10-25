@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react"
 import { House, Mail, Pencil, Phone, type LucideIcon } from "lucide-react"
-import { toast } from "sonner"
 import { updateContact } from "@/app/(roles)/paciente/actions"
+import { FormAlert } from "@/components/layout/form-alert"
+import { notify } from "@/components/layout/notice"
 import { Button } from "@/components/ui/button"
 
 type Contact = { phone: string | null; email: string | null; address: string | null }
@@ -28,6 +29,7 @@ const inputClass =
 /** Datos de contacto: se ven en modo lectura y se editan con un botón grande. */
 export function ContactForm({ contact }: { contact: Contact }) {
   const [editing, setEditing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   if (!editing) {
@@ -46,7 +48,15 @@ export function ContactForm({ contact }: { contact: Contact }) {
             </div>
           ))}
         </dl>
-        <Button variant="outline" size="xl" className="w-full" onClick={() => setEditing(true)}>
+        <Button
+          variant="outline"
+          size="xl"
+          className="w-full"
+          onClick={() => {
+            setError(null)
+            setEditing(true)
+          }}
+        >
           <Pencil />
           Cambiar mis datos de contacto
         </Button>
@@ -55,6 +65,7 @@ export function ContactForm({ contact }: { contact: Contact }) {
   }
 
   function save(form: FormData) {
+    setError(null)
     startTransition(async () => {
       const result = await updateContact({
         phone: String(form.get("phone") ?? ""),
@@ -62,10 +73,10 @@ export function ContactForm({ contact }: { contact: Contact }) {
         address: String(form.get("address") ?? ""),
       })
       if (!result.ok) {
-        toast.error(result.error)
+        setError(result.error)
         return
       }
-      toast.success("Sus datos de contacto se guardaron")
+      notify.success("Datos de contacto guardados")
       setEditing(false)
     })
   }
@@ -91,6 +102,7 @@ export function ContactForm({ contact }: { contact: Contact }) {
           />
         </div>
       ))}
+      <FormAlert message={error} />
       <div className="grid gap-2 pt-1">
         <Button type="submit" size="xl" disabled={pending}>
           {pending ? "Guardando…" : "Guardar cambios"}

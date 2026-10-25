@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { ArrowRight, Loader2 } from "lucide-react"
-import { toast } from "sonner"
 import { rescheduleAppointment } from "@/app/(roles)/paciente/actions"
+import { FormAlert } from "@/components/layout/form-alert"
+import { notify } from "@/components/layout/notice"
 import { Button } from "@/components/ui/button"
 import { capitalize, formatDate, formatDateTime, formatTime } from "@/lib/format"
 import { SlotPicker } from "./slot-picker"
@@ -24,17 +25,19 @@ export function RescheduleForm({
   const router = useRouter()
   const [slot, setSlot] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   function confirm() {
     if (!slot) return
+    setError(null)
     startTransition(async () => {
       const result = await rescheduleAppointment({ appointmentId, newAt: slot })
       if (result.ok) {
-        toast.success(`Su cita se cambió al ${formatDateTime(slot)}.`)
+        notify.success("Cita reprogramada", { description: capitalize(formatDateTime(slot)) })
         router.replace("/paciente/citas")
       } else {
-        toast.error(result.error)
+        setError(result.error)
         setSlot(null)
         setReloadKey((k) => k + 1)
       }
@@ -43,7 +46,17 @@ export function RescheduleForm({
 
   return (
     <div className="space-y-6">
-      <SlotPicker doctorId={doctorId} days={days} value={slot} onChange={setSlot} reloadKey={reloadKey} />
+      <FormAlert message={error} />
+      <SlotPicker
+        doctorId={doctorId}
+        days={days}
+        value={slot}
+        onChange={(s) => {
+          setSlot(s)
+          if (s) setError(null)
+        }}
+        reloadKey={reloadKey}
+      />
 
       {slot && (
         <div className="rounded-2xl bg-secondary/60 p-4 ring-1 ring-primary/20">

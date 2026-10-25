@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react"
 import { Loader2, MoreVertical, RotateCcw } from "lucide-react"
-import { toast } from "sonner"
 import { resetDemo } from "@/app/actions"
 import { Button } from "@/components/ui/button"
+import { FormAlert } from "./form-alert"
+import { notify } from "./notice"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,14 +25,19 @@ import {
 
 export function DemoMenu() {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   function reset() {
+    setError(null)
     startTransition(async () => {
       const result = await resetDemo()
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
       setConfirmOpen(false)
-      if (result.ok) toast.success("Demo reiniciada: los datos volvieron a su estado inicial.")
-      else toast.error(result.error)
+      notify.success("Demo reiniciada", { description: "Los datos volvieron a su estado inicial." })
     })
   }
 
@@ -51,7 +57,14 @@ export function DemoMenu() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={confirmOpen} onOpenChange={(open) => !pending && setConfirmOpen(open)}>
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (pending) return
+          setConfirmOpen(open)
+          setError(null)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Reiniciar la demo?</AlertDialogTitle>
@@ -60,6 +73,7 @@ export function DemoMenu() {
               restaurarán los datos iniciales en todos los dispositivos.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <FormAlert message={error} />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={reset} disabled={pending}>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Search, TriangleAlert, X } from "lucide-react"
-import { toast } from "sonner"
+import { FormAlert } from "@/components/layout/form-alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { age, capitalize } from "@/lib/format"
@@ -38,6 +38,7 @@ export function PatientSearch({
 }) {
   const [patients, setPatients] = useState<PatientHit[] | null>(null)
   const [query, setQuery] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -47,7 +48,7 @@ export function PatientSearch({
       .order("last_names")
       .then(({ data, error }) => {
         if (!active) return
-        if (error) return toast.error(error.message)
+        if (error) return setError("No se pudo cargar el padrón de asegurados. Revise la conexión.")
         setPatients(
           data.map((p) => {
             const name = `${p.first_names} ${p.last_names}`
@@ -108,7 +109,8 @@ export function PatientSearch({
           className="h-10 pl-9"
         />
       </div>
-      {words.length > 0 && (
+      <FormAlert message={error} />
+      {words.length > 0 && !error && (
         <ul className="max-h-64 divide-y overflow-y-auto rounded-lg border" aria-label="Resultados">
           {!patients ? (
             <li className="p-3 text-muted-foreground">Buscando…</li>

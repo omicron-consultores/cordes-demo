@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { CheckCircle2, Loader2, ShieldAlert } from "lucide-react"
-import { toast } from "sonner"
 import { completeEncounter } from "@/app/(roles)/medico/actions"
 import {
   AlertDialog,
@@ -15,6 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { FormAlert } from "@/components/layout/form-alert"
+import { notify } from "@/components/layout/notice"
 import { Button } from "@/components/ui/button"
 import {
   EMPTY_ENCOUNTER,
@@ -73,6 +74,8 @@ export function EncounterForm({
   const [lines, setLines] = useState<PrescriptionLine[]>([])
   const [rxErrors, setRxErrors] = useState<Record<number, PrescriptionLineErrors>>({})
   const [confirming, setConfirming] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null) // validación, junto al botón
+  const [saveError, setSaveError] = useState<string | null>(null) // error de la BD, dentro del diálogo
   const [pending, startTransition] = useTransition()
 
   function set(field: EncounterField, value: string) {
@@ -109,9 +112,11 @@ export function EncounterForm({
         FIELD_ORDER.find((f) => found[f]) ??
         (firstLine !== undefined && `rx-${firstLine}-${RX_FIELD_ORDER.find((f) => foundRx[firstLine][f])}`)
       if (target) document.getElementById(target)?.focus()
-      toast.error(rx.success || firstLine !== undefined ? "Revise los campos marcados en rojo." : rx.error.issues[0].message)
+      setFormError(rx.success || firstLine !== undefined ? "Revise los campos marcados en rojo." : rx.error.issues[0].message)
       return
     }
+    setFormError(null)
+    setSaveError(null)
     setConfirming(true)
   }
 
@@ -119,18 +124,17 @@ export function EncounterForm({
     startTransition(async () => {
       const result = await completeEncounter(encounterId, values, lines)
       if (!result.ok) {
-        toast.error(result.error)
+        setSaveError(result.error)
         return
       }
       setConfirming(false)
       if (result.folio) {
-        toast.success(`Receta ${result.folio} enviada a Farmacia`, {
+        notify.success(`Receta ${result.folio} enviada a Farmacia`, {
           description: "La atención quedó cerrada y la cita como atendida.",
-          duration: 10_000,
-          action: { label: "Ver en Farmacia", onClick: () => router.push("/farmacia") },
+          action: { label: "Ver en Farmacia", href: "/farmacia" },
         })
       } else {
-        toast.success("Atención cerrada sin receta. La cita quedó como atendida.")
+        notify.success("Atención cerrada", { description: "Sin receta. La cita quedó como atendida." })
       }
       router.push("/medico")
     })
@@ -241,6 +245,7 @@ export function EncounterForm({
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t bg-muted/30 px-5 py-4 sm:px-6">
+        <FormAlert message={formError} className="mr-auto py-2" />
         <Button type="submit" size="lg" disabled={pending}>
           <CheckCircle2 />
           Finalizar atención
@@ -284,6 +289,7 @@ export function EncounterForm({
               })}
             </ul>
           )}
+          <FormAlert message={saveError} />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Seguir editando</AlertDialogCancel>
             <AlertDialogAction onClick={finish} disabled={pending}>

@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react"
 import { CalendarPlus, CalendarX2, FilterX, Phone, Smartphone, Store, type LucideIcon } from "lucide-react"
-import { toast } from "sonner"
+import { notify } from "@/components/layout/notice"
 import { APPOINTMENT_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button } from "@/components/ui/button"
 import type { Database } from "@/lib/database.types"
@@ -331,7 +331,7 @@ async function notifyFromApp(row: Tables<"appointments">, doctors: DoctorOption[
     .eq("id", row.patient_id)
     .maybeSingle()
   const doctor = doctors.find((d) => d.id === row.doctor_id)
-  toast.info(`Nueva cita desde la app${p ? `: ${p.first_names} ${p.last_names}` : ""}`, {
+  notify.info(`Nueva cita desde la app${p ? `: ${p.first_names} ${p.last_names}` : ""}`, {
     description: [formatTime(row.scheduled_at), doctor?.name].filter(Boolean).join(" · "),
   })
 }

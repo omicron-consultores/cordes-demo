@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react"
 import { Loader2, PackagePlus } from "lucide-react"
-import { toast } from "sonner"
 import { receiveStock } from "@/app/(roles)/farmacia/actions"
 import { SelectField } from "@/components/admision/select-field"
+import { FormAlert } from "@/components/layout/form-alert"
+import { notify } from "@/components/layout/notice"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -26,17 +27,26 @@ export function ReceiveDialog({
   onOpenChange,
   medications,
   today,
+  onViewLot,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   medications: Medication[]
   today: string
+  onViewLot: (lotNumber: string) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 p-0 sm:max-w-lg">
         {/* Se monta al abrir: cada apertura empieza limpia. */}
-        {open && <ReceiveForm medications={medications} today={today} onDone={() => onOpenChange(false)} />}
+        {open && (
+          <ReceiveForm
+            medications={medications}
+            today={today}
+            onDone={() => onOpenChange(false)}
+            onViewLot={onViewLot}
+          />
+        )}
       </DialogContent>
     </Dialog>
   )
@@ -46,15 +56,18 @@ function ReceiveForm({
   medications,
   today,
   onDone,
+  onViewLot,
 }: {
   medications: Medication[]
   today: string
   onDone: () => void
+  onViewLot: (lotNumber: string) => void
 }) {
   const [code, setCode] = useState("")
   const [lot, setLot] = useState("")
   const [expiresAt, setExpiresAt] = useState("")
   const [quantity, setQuantity] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   const med = medications.find((m) => m.code === code)
@@ -67,15 +80,18 @@ function ReceiveForm({
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!ready || !med) return
+    setError(null)
+    const lotNumber = lot.trim()
     startTransition(async () => {
       const result = await receiveStock({ medicationCode: med.code!, lotNumber: lot, expiresAt, quantity: qty })
       if (result.ok) {
-        toast.success(`Ingreso registrado: ${formatNumber(qty)} ${unitLabel(med.form ?? "unidad", qty)}`, {
-          description: `${med.name} · lote ${lot.trim()}`,
+        notify.success("Stock ingresado", {
+          description: `${formatNumber(qty)} ${unitLabel(med.form ?? "unidad", qty)} de ${med.name} · lote ${lotNumber}`,
+          action: { label: "Ver lote", onClick: () => onViewLot(lotNumber) },
         })
         onDone()
       } else {
-        toast.error(result.error)
+        setError(result.error)
       }
     })
   }
@@ -160,6 +176,7 @@ function ReceiveForm({
             )}
           </label>
         </div>
+        <FormAlert message={error} />
       </div>
 
       <DialogFooter className="m-0 rounded-b-xl border-t bg-muted/80 p-4">

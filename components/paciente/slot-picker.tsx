@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { CalendarX2 } from "lucide-react"
-import { toast } from "sonner"
+import { notify } from "@/components/layout/notice"
 import { capitalize, formatDate, formatDayParts, formatTime } from "@/lib/format"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
@@ -29,6 +29,7 @@ export function SlotPicker({
 }) {
   const [slots, setSlots] = useState<SlotsByDay | null>(null)
   const [day, setDay] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -47,11 +48,18 @@ export function SlotPicker({
           current && byDay[current]?.length ? current : (days.find((d) => byDay[d].length) ?? days[0]),
         )
       })
-      .catch((error: { message: string }) => active && toast.error(error.message))
+      .catch(
+        () =>
+          active &&
+          notify.error("No se pudieron cargar los horarios", {
+            description: "Revise la conexión a internet.",
+            action: { label: "Reintentar", onClick: () => setRetry((n) => n + 1) },
+          }),
+      )
     return () => {
       active = false
     }
-  }, [doctorId, days, reloadKey])
+  }, [doctorId, days, reloadKey, retry])
 
   const daySlots = day && slots ? slots[day] : []
 

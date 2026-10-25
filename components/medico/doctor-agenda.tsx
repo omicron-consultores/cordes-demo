@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react"
 import { CalendarX2, Loader2, ShieldAlert, Stethoscope } from "lucide-react"
-import { toast } from "sonner"
 import { startEncounter } from "@/app/(roles)/medico/actions"
 import { NoShowButton } from "@/components/agenda/no-show-button"
+import { notify } from "@/components/layout/notice"
 import { APPOINTMENT_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button } from "@/components/ui/button"
 import { capitalize, formatDate, formatShortDate, formatTime } from "@/lib/format"
@@ -42,7 +42,7 @@ export function DoctorAgenda({
     startOpening(async () => {
       const result = await startEncounter(appt.id!)
       // Si no falla, la acción redirige a la atención.
-      if (result?.error) toast.error(result.error)
+      if (result?.error) notify.error("No se pudo abrir la atención", { description: result.error })
     })
   }
 
@@ -211,7 +211,7 @@ function useLiveDoctorAgenda(doctorId: string, today: string) {
           }),
         FRESH_MS,
       )
-      toast.info("Nueva cita para hoy", { description: formatTime(row.scheduled_at) })
+      notify.info("Nueva cita para hoy", { description: `A las ${formatTime(row.scheduled_at)}` })
     },
   })
 

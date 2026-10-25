@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { CircleCheck, ClipboardCheck, Pill, ShieldAlert, TriangleAlert } from "lucide-react"
-import { toast } from "sonner"
+import { notify } from "@/components/layout/notice"
 import { PHARMACY_STATUS, StatusPill } from "@/components/paciente/status"
 import { buttonVariants } from "@/components/ui/button"
 import { capitalize, folioLabel, formatDate, formatShortDate, formatTime } from "@/lib/format"
@@ -232,7 +232,8 @@ async function notifyNew(row: Tables<"prescriptions">) {
     .select("patient_name, doctor_name")
     .eq("id", row.id)
     .maybeSingle()
-  toast.info(`Nueva receta ${folioLabel(row.folio)}`, {
-    description: data ? [data.patient_name, data.doctor_name].filter(Boolean).join(" · ") : undefined,
+  notify.info("Nueva receta en bandeja", {
+    description: [folioLabel(row.folio), data?.patient_name, data?.doctor_name].filter(Boolean).join(" · "),
+    action: { label: "Abrir receta", href: `/farmacia/receta/${row.id}` },
   })
 }

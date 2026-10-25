@@ -52,6 +52,7 @@ export function InventoryBoard({
 }) {
   const [tab, setTab] = useState<Tab>(isInventoryTab(initialTab) ? initialTab : "stock")
   const [receiving, setReceiving] = useState(false)
+  const [lotQuery, setLotQuery] = useState("") // "Ver lote" del aviso de ingreso lo filtra aquí
   // Toda dispensación, ingreso o baja cambia un lote (el kardex no está en Realtime, pero cambia a la vez).
   const live = useRealtimeRefresh(["stock_lots"])
 
@@ -59,6 +60,11 @@ export function InventoryBoard({
     setTab(next)
     // La pestaña queda en la URL (se puede enlazar) sin volver a pedir la página.
     window.history.replaceState(null, "", next === "stock" ? "?" : `?tab=${next}`)
+  }
+
+  function viewLot(lotNumber: string) {
+    setLotQuery(lotNumber)
+    selectTab("lotes")
   }
 
   const value = stock.reduce((sum, m) => sum + (m.stock_value ?? 0), 0)
@@ -106,10 +112,16 @@ export function InventoryBoard({
       </div>
 
       {tab === "stock" && <StockTab stock={stock} today={today} />}
-      {tab === "lotes" && <LotsTab lots={lots} />}
+      {tab === "lotes" && <LotsTab lots={lots} query={lotQuery} onQuery={setLotQuery} />}
       {tab === "movimientos" && <MovementsTab movements={movements} />}
 
-      <ReceiveDialog open={receiving} onOpenChange={setReceiving} medications={stock} today={today} />
+      <ReceiveDialog
+        open={receiving}
+        onOpenChange={setReceiving}
+        medications={stock}
+        today={today}
+        onViewLot={viewLot}
+      />
     </div>
   )
 }
@@ -207,8 +219,7 @@ function StockBar({ available, min, status }: { available: number; min: number; 
 
 // ---------- Lotes ----------
 
-function LotsTab({ lots }: { lots: LotRow[] }) {
-  const [query, setQuery] = useState("")
+function LotsTab({ lots, query, onQuery }: { lots: LotRow[]; query: string; onQuery: (q: string) => void }) {
   const [status, setStatus] = useState<string>("")
 
   const q = normalizeSearch(query.trim())
@@ -221,7 +232,7 @@ function LotsTab({ lots }: { lots: LotRow[] }) {
     <div className="space-y-4">
       <Filters
         query={query}
-        onQuery={setQuery}
+        onQuery={onQuery}
         placeholder="Buscar por medicamento o lote…"
         options={LOT_FILTERS.map((s) => ({
           key: s,

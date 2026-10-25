@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react"
 import { CalendarCheck, Loader2 } from "lucide-react"
-import { toast } from "sonner"
 import { bookAtWindow } from "@/app/(roles)/admision/actions"
+import { FormAlert } from "@/components/layout/form-alert"
+import { notify } from "@/components/layout/notice"
 import { SlotPicker } from "@/components/paciente/slot-picker"
 import { Button } from "@/components/ui/button"
 import {
@@ -72,6 +73,7 @@ function BookForm({
   const [slot, setSlot] = useState<string | null>(null)
   const [reason, setReason] = useState("")
   const [reloadKey, setReloadKey] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   const doctor = doctors.find((d) => d.id === doctorId)
@@ -79,15 +81,16 @@ function BookForm({
 
   function confirm() {
     if (!patient || !doctor || !slot) return
+    setError(null)
     startTransition(async () => {
       const result = await bookAtWindow({ patientId: patient.id, doctorId: doctor.id, scheduledAt: slot, reason })
       if (result.ok) {
-        toast.success(`Cita agendada para ${patient.name}`, {
-          description: `${formatDateTime(slot)} · ${doctor.name}`,
+        notify.success("Cita agendada", {
+          description: `${patient.name} · ${formatDateTime(slot)} · ${doctor.name}`,
         })
         onDone()
       } else {
-        toast.error(result.error)
+        setError(result.error)
         // El cupo pudo ocuparse desde la app mientras tanto: volver a consultar.
         setSlot(null)
         setReloadKey((k) => k + 1)
@@ -116,6 +119,7 @@ function BookForm({
             onChange={(e) => {
               setDoctorId(e.target.value)
               setSlot(null)
+              setError(null)
             }}
           >
             <option value="" disabled>
@@ -138,8 +142,18 @@ function BookForm({
         </Step>
 
         <Step n={3} title="Día y horario">
+          <FormAlert message={error} />
           {doctor ? (
-            <SlotPicker doctorId={doctor.id} days={days} value={slot} onChange={setSlot} reloadKey={reloadKey} />
+            <SlotPicker
+              doctorId={doctor.id}
+              days={days}
+              value={slot}
+              onChange={(s) => {
+                setSlot(s)
+                if (s) setError(null)
+              }}
+              reloadKey={reloadKey}
+            />
           ) : (
             <p className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
               Elija primero un médico.

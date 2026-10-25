@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react"
 import { Loader2, X } from "lucide-react"
-import { toast } from "sonner"
 import { cancelAppointment } from "@/app/(roles)/paciente/actions"
 import {
   AlertDialog,
@@ -14,20 +13,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { FormAlert } from "@/components/layout/form-alert"
+import { notify } from "@/components/layout/notice"
 import { Button } from "@/components/ui/button"
 
 export function CancelAppointmentButton({ appointmentId, when }: { appointmentId: string; when: string }) {
   const [open, setOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   function confirm() {
+    setError(null)
     startTransition(async () => {
       const result = await cancelAppointment(appointmentId)
       if (result.ok) {
         setOpen(false)
-        toast.success("Su cita fue cancelada.")
+        notify.success("Cita cancelada", { description: "El horario quedó libre para otro paciente." })
       } else {
-        toast.error(result.error)
+        setError(result.error)
       }
     })
   }
@@ -39,7 +42,11 @@ export function CancelAppointmentButton({ appointmentId, when }: { appointmentId
         Cancelar
       </Button>
 
-      <AlertDialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
+      <AlertDialog open={open} onOpenChange={(next) => {
+          if (pending) return
+          setOpen(next)
+          setError(null)
+        }}>
         <AlertDialogContent className="data-[size=default]:max-w-sm">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg">¿Cancelar esta cita?</AlertDialogTitle>
@@ -48,6 +55,7 @@ export function CancelAppointmentButton({ appointmentId, when }: { appointmentId
               horario se liberará para otro paciente.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <FormAlert message={error} />
           <AlertDialogFooter>
             <AlertDialogCancel size="xl" disabled={pending}>
               No, mantener

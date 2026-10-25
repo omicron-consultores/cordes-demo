@@ -4,8 +4,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { Ban, CircleCheck, HeartPulse, Loader2, Pill, ShieldAlert, StickyNote, TriangleAlert } from "lucide-react"
-import { toast } from "sonner"
 import { dispensePrescription, type DispenseResult } from "@/app/(roles)/farmacia/actions"
+import { FormAlert } from "@/components/layout/form-alert"
+import { notify } from "@/components/layout/notice"
 import { PRESCRIPTION_STATUS, PHARMACY_STATUS, StatusPill } from "@/components/paciente/status"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +44,7 @@ export function DispenseView({
   const [quantities, setQuantities] = useState(() => pendingQuantities(items))
   const [prevItems, setPrevItems] = useState(items)
   const [result, setResult] = useState<Result | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   // Llegaron datos nuevos (tras dispensar): la cantidad a entregar vuelve a ser lo pendiente.
@@ -58,24 +60,27 @@ export function DispenseView({
 
   function dispense() {
     const before = items // pendientes antes de dispensar, para explicar el resultado
+    setError(null)
     startTransition(async () => {
       const res = await dispensePrescription(
         prescriptionId,
         toDispense.map((i) => ({ item_id: i.id!, quantity: Number(quantities[i.id!]) })),
       )
       if (!res.ok) {
-        toast.error(res.error)
+        setError(res.error)
         return
       }
       const outcome = buildResult(res.result, before)
       setResult(outcome)
       router.refresh()
-      const toInventory = {
-        duration: 10_000,
-        action: { label: "Ver inventario", onClick: () => router.push("/farmacia/inventario") },
-      }
-      if (outcome.status === "dispensada") toast.success(`Receta ${outcome.folio} dispensada`, toInventory)
-      else toast.warning(`Receta ${outcome.folio} queda en bandeja`, toInventory)
+      const action = { label: "Ver inventario", href: "/farmacia/inventario" }
+      if (outcome.status === "dispensada")
+        notify.success("Receta dispensada", { description: `${outcome.folio} entregada completa.`, action })
+      else
+        notify.warning(`Receta ${outcome.folio} entregada en parte`, {
+          description: "Queda en la bandeja con lo pendiente.",
+          action,
+        })
     })
   }
 
@@ -135,6 +140,8 @@ export function DispenseView({
           </tbody>
         </table>
       </div>
+
+      <FormAlert message={error} />
 
       <div className="flex justify-end gap-3">
         {open ? (

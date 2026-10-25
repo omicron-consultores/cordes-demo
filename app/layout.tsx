@@ -20,7 +20,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />
-        <Toaster position="top-center" closeButton />
+        <Toaster />
       </body>
     </html>
   )

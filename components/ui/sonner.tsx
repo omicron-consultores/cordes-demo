@@ -1,43 +1,19 @@
 "use client"
 
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
+// Los avisos se dibujan con components/layout/notice.tsx (toast.custom): aquí solo posición y ancho.
+// Escritorio: esquina inferior derecha, 380 px. Móvil (< 600 px): Sonner los pone a todo el ancho;
+// el margen inferior deja libre la navegación del paciente.
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme="light"
+      position="bottom-right"
       className="toaster group"
-      icons={{
-        success: (
-          <CircleCheckIcon className="size-4" />
-        ),
-        info: (
-          <InfoIcon className="size-4" />
-        ),
-        warning: (
-          <TriangleAlertIcon className="size-4" />
-        ),
-        error: (
-          <OctagonXIcon className="size-4" />
-        ),
-        loading: (
-          <Loader2Icon className="size-4 animate-spin" />
-        ),
-      }}
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
-        } as React.CSSProperties
-      }
-      toastOptions={{
-        classNames: {
-          toast: "cn-toast",
-        },
-      }}
+      gap={10}
+      mobileOffset={{ bottom: 76, left: 12, right: 12 }}
+      style={{ "--width": "380px" } as React.CSSProperties}
       {...props}
     />
   )
