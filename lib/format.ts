@@ -73,13 +73,11 @@ export function formatShortDate(value: DateInput): string {
 }
 
 /**
- * Fecha de hoy en Bolivia como 'YYYY-MM-DD' (equivale a bo_today() en SQL).
- * Solo en `next dev`: DEMO_DAY_OFFSET=1 en .env.local corre "hoy" N días (p. ej. probar un domingo
- * como si fuera lunes). La BD sigue en la fecha real: los KPI del día de Gerencia no se corren.
+ * Fecha de hoy en Bolivia como 'YYYY-MM-DD': la misma que bo_today() en SQL, con la que se
+ * calculan agendas e indicadores. Lo que se muestra como "hoy" sale siempre de aquí.
  */
 export function boToday(): string {
-  const offset = process.env.NODE_ENV === "development" ? Number(process.env.DEMO_DAY_OFFSET ?? 0) || 0 : 0
-  const p = parts(new Date(Date.now() + offset * 86_400_000), { year: "numeric", month: "2-digit", day: "2-digit" })
+  const p = parts(new Date(), { year: "numeric", month: "2-digit", day: "2-digit" })
   return `${p.year}-${p.month}-${p.day}`
 }
 
@@ -91,6 +89,12 @@ export function age(birthDate: string): number {
 /** Días de calendario de `from` a `to` ('YYYY-MM-DD'): negativo si `to` ya pasó. */
 export function daysBetween(from: string, to: string): number {
   return differenceInCalendarDays(toDate(to), toDate(from))
+}
+
+/** "lunes 26" */
+export function formatWeekdayDay(value: DateInput): string {
+  const p = parts(value, { weekday: "long", day: "numeric" })
+  return `${p.weekday} ${p.day}`
 }
 
 /** { weekday: "lun", day: "21", month: "oct" } para selectores de día compactos. */
