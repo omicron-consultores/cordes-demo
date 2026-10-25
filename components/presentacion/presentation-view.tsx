@@ -140,8 +140,11 @@ export function PresentationView() {
             ))}
             <span className="ml-auto hidden text-xs text-muted-foreground xl:block">Teclas 1–5 para cambiar de paso</span>
           </nav>
-          <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-card shadow-xl ring-1 ring-foreground/10">
-            <iframe ref={roleRef} src={STEPS[0].href} title="Pantalla del establecimiento" className="size-full" />
+          {/* Monitor: marco gris grueso y casi cuadrado; la pantalla va encima con esquinas más redondas. */}
+          <div className="min-h-0 flex-1 rounded-[3px] bg-[#4b5258] p-3 shadow-2xl ring-1 ring-black/25">
+            <div className="size-full overflow-hidden rounded-xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.45)] ring-1 ring-black/30">
+              <iframe ref={roleRef} src={STEPS[0].href} title="Pantalla del establecimiento" className="size-full" />
+            </div>
           </div>
         </section>
       </div>

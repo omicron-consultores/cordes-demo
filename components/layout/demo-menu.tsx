@@ -1,7 +1,8 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { Loader2, MoreVertical, RotateCcw } from "lucide-react"
+import { Loader2, MoreVertical, Presentation, RotateCcw } from "lucide-react"
 import { resetDemo } from "@/app/actions"
 import { Button } from "@/components/ui/button"
 import { FormAlert } from "./form-alert"
@@ -24,7 +25,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function DemoMenu() {
+  const router = useRouter()
   const [confirmOpen, setConfirmOpen] = useState(false)
+
+  // Dentro de /presentacion este menú vive en un iframe: la ventana principal vuelve al inicio.
+  function togglePresentation() {
+    const top = window.top ?? window
+    if (top.location.pathname === "/presentacion") top.location.assign("/")
+    else router.push("/presentacion")
+  }
 
   return (
     <>
@@ -35,6 +44,10 @@ export function DemoMenu() {
           <MoreVertical />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onClick={togglePresentation} className="gap-2.5 py-2">
+            <Presentation />
+            Vista presentación
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setConfirmOpen(true)} className="gap-2.5 py-2">
             <RotateCcw />
             Reiniciar demo

@@ -72,9 +72,14 @@ export function formatShortDate(value: DateInput): string {
   return `${p.day}/${p.month}/${p.year}`
 }
 
-/** Fecha de hoy en Bolivia como 'YYYY-MM-DD' (equivale a bo_today() en SQL). */
+/**
+ * Fecha de hoy en Bolivia como 'YYYY-MM-DD' (equivale a bo_today() en SQL).
+ * Solo en `next dev`: DEMO_DAY_OFFSET=1 en .env.local corre "hoy" N días (p. ej. probar un domingo
+ * como si fuera lunes). La BD sigue en la fecha real: los KPI del día de Gerencia no se corren.
+ */
 export function boToday(): string {
-  const p = parts(new Date(), { year: "numeric", month: "2-digit", day: "2-digit" })
+  const offset = process.env.NODE_ENV === "development" ? Number(process.env.DEMO_DAY_OFFSET ?? 0) || 0 : 0
+  const p = parts(new Date(Date.now() + offset * 86_400_000), { year: "numeric", month: "2-digit", day: "2-digit" })
   return `${p.year}-${p.month}-${p.day}`
 }
 
