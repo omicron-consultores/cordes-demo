@@ -2,9 +2,10 @@
 
 import Image from "next/image"
 import { useEffect, useEffectEvent, useRef, useState } from "react"
-import { BarChart3, Boxes, ClipboardList, Pill, RotateCcw, Stethoscope, type LucideIcon } from "lucide-react"
+import Link from "next/link"
+import { BarChart3, Boxes, ClipboardList, LogOut, Pill, RotateCcw, Stethoscope, type LucideIcon } from "lucide-react"
 import { ResetDemoDialog } from "@/components/layout/demo-menu"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import chemonicsLogo from "@/public/brand/chemonics.png"
 import cordesLogo from "@/public/brand/cordes.png"
@@ -18,6 +19,9 @@ const STEPS: { label: string; href: string; icon: LucideIcon }[] = [
   { label: "Inventario", href: "/farmacia/inventario", icon: Boxes },
   { label: "Gerencia", href: "/gerencia", icon: BarChart3 },
 ]
+
+// Las pantallas se cargan en modo incrustado: sin cabecera ni pie de la app (ver app/layout.tsx).
+const embed = (href: string) => `${href}?embed=1`
 
 // Pantalla del celular (390×844) + marco de 12 px por lado.
 const BEZEL = 12
@@ -38,7 +42,7 @@ export function PresentationView() {
 
   function go(index: number) {
     setActive(index)
-    roleRef.current?.contentWindow?.location.assign(STEPS[index].href)
+    roleRef.current?.contentWindow?.location.assign(embed(STEPS[index].href))
   }
 
   // Teclas 1–5 en esta página o reenviadas desde los iframes; el paso se marca según la ruta del iframe.
@@ -67,8 +71,8 @@ export function PresentationView() {
 
   // Tras reiniciar, los UUID cambian: cada iframe vuelve al inicio de su pantalla.
   function reloadFrames() {
-    phoneRef.current?.contentWindow?.location.replace("/paciente")
-    roleRef.current?.contentWindow?.location.replace(STEPS[active].href)
+    phoneRef.current?.contentWindow?.location.replace(embed("/paciente"))
+    roleRef.current?.contentWindow?.location.replace(embed(STEPS[active].href))
   }
 
   return (
@@ -88,6 +92,11 @@ export function PresentationView() {
             <RotateCcw />
             Reiniciar demo
           </Button>
+          {/* En modo incrustado las pantallas no muestran su menú ⋮: la salida está aquí. */}
+          <Link href="/" className={buttonVariants({ variant: "ghost" })}>
+            <LogOut />
+            Salir
+          </Link>
         </div>
       </header>
 
@@ -102,7 +111,7 @@ export function PresentationView() {
               >
                 <iframe
                   ref={phoneRef}
-                  src="/paciente"
+                  src={embed("/paciente")}
                   title="App del paciente"
                   className="size-full rounded-[2.5rem] bg-background"
                 />
@@ -143,7 +152,7 @@ export function PresentationView() {
           {/* Monitor: marco gris grueso y casi cuadrado; la pantalla va encima con esquinas más redondas. */}
           <div className="min-h-0 flex-1 rounded-[3px] bg-[#4b5258] p-3 shadow-2xl ring-1 ring-black/25">
             <div className="size-full overflow-hidden rounded-xl bg-card shadow-[0_1px_4px_rgba(0,0,0,0.45)] ring-1 ring-black/30">
-              <iframe ref={roleRef} src={STEPS[0].href} title="Pantalla del establecimiento" className="size-full" />
+              <iframe ref={roleRef} src={embed(STEPS[0].href)} title="Pantalla del establecimiento" className="size-full" />
             </div>
           </div>
         </section>

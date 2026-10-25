@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { Loader2, MoreVertical, Presentation, RotateCcw } from "lucide-react"
+import { Check, Loader2, MoreVertical, Presentation, RotateCcw } from "lucide-react"
 import { resetDemo } from "@/app/actions"
 import { Button } from "@/components/ui/button"
 import { FormAlert } from "./form-alert"
@@ -20,11 +20,16 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ROLES, ROLE_KEYS, type Role } from "@/lib/roles"
 
-export function DemoMenu() {
+/** Menú ⋮ de la cabecera. Con `role` (barra compacta del móvil) incluye el selector de rol. */
+export function DemoMenu({ role }: { role?: Role }) {
   const router = useRouter()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
@@ -43,7 +48,29 @@ export function DemoMenu() {
         >
           <MoreVertical />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuContent align="end" className={role ? "w-60" : "w-52"}>
+          {role && (
+            <>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Cambiar de rol</DropdownMenuLabel>
+                {ROLE_KEYS.map((key) => {
+                  const { label, icon: Icon } = ROLES[key]
+                  return (
+                    <DropdownMenuItem
+                      key={key}
+                      onClick={() => key !== role && router.push(`/${key}`)}
+                      className="gap-2.5 py-2"
+                    >
+                      <Icon className="text-primary" />
+                      <span className="flex-1">{label}</span>
+                      {key === role && <Check className="text-primary" />}
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem onClick={togglePresentation} className="gap-2.5 py-2">
             <Presentation />
             Vista presentación

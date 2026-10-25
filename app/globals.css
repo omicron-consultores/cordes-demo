@@ -5,6 +5,9 @@
 /* Sin modo oscuro: dark: solo aplicaría bajo .dark, que no se usa */
 @custom-variant dark (&:is(.dark *));
 
+/* Modo incrustado (/presentacion): <html data-embed> lo pone el script del layout raíz. */
+@custom-variant embed (&:is([data-embed] *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

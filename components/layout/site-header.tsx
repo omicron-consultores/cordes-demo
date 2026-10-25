@@ -4,13 +4,19 @@ import { Suspense } from "react"
 import cordesLogo from "@/public/brand/cordes.png"
 import type { Role } from "@/lib/roles"
 import { getActorName } from "@/lib/session"
+import { cn } from "@/lib/utils"
 import { DemoMenu } from "./demo-menu"
 import { RoleSwitcher } from "./role-switcher"
 
-/** Sin `role` (pantalla de inicio) no muestra el selector de rol. */
-export function SiteHeader({ role }: { role?: Role }) {
+/** Sin `role` (pantalla de inicio) no muestra el selector de rol. Oculta en modo incrustado. */
+export function SiteHeader({ role, className }: { role?: Role; className?: string }) {
   return (
-    <header className="sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/85">
+    <header
+      className={cn(
+        "sticky top-0 z-40 border-b bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/85 embed:hidden",
+        className,
+      )}
+    >
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 md:px-6">
         <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Inicio · elegir rol">
           <Image src={cordesLogo} alt="CORDES Cochabamba" priority className="h-9 w-auto" />
