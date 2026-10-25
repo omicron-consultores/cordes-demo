@@ -10,7 +10,7 @@ const subscribe = (cb: () => void) => {
   return () => clearInterval(id)
 }
 
-/** Barra de estado falsa del celular: solo en modo incrustado (marco de /presentacion). */
+/** Barra de estado falsa: en el celular dibujado (escritorio) y en el marco de /presentacion. */
 export function PhoneStatusBar() {
   const time = useSyncExternalStore(
     subscribe,
@@ -18,7 +18,7 @@ export function PhoneStatusBar() {
     () => null,
   )
   return (
-    <div aria-hidden className="hidden h-8 items-center justify-between px-7 text-[13px] font-semibold embed:flex">
+    <div aria-hidden className="hidden h-8 items-center justify-between px-7 text-[13px] font-semibold sm:flex embed:flex">
       <span className="tabular-nums">{time}</span>
       <span className="flex items-center gap-1.5">
         <Signal className="size-3.5" strokeWidth={2.5} />

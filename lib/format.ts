@@ -73,11 +73,25 @@ export function formatShortDate(value: DateInput): string {
 }
 
 /**
- * Fecha de hoy en Bolivia como 'YYYY-MM-DD': la misma que bo_today() en SQL, con la que se
- * calculan agendas e indicadores. Lo que se muestra como "hoy" sale siempre de aquí.
+ * Fecha de "hoy" en Bolivia como 'YYYY-MM-DD' (equivale a bo_today() en SQL). Lo que se muestra
+ * como "hoy" y las agendas salen de aquí.
+ *
+ * Pruebas: DEMO_DAY_OFFSET=1 (variable de servidor, en .env.local o en Netlify) corre "hoy" N días,
+ * p. ej. para probar un domingo como si fuera lunes. Sin la variable no cambia nada. La BD sigue en
+ * la fecha real: los KPI "del día" de Gerencia y "Dispensadas hoy" cuentan el día real.
  */
 export function boToday(): string {
-  const p = parts(new Date(), { year: "numeric", month: "2-digit", day: "2-digit" })
+  const offset = Number(process.env.DEMO_DAY_OFFSET ?? 0) || 0
+  return isoDate(new Date(Date.now() + offset * 86_400_000))
+}
+
+/** Fecha real de hoy en Bolivia, sin DEMO_DAY_OFFSET (para avisar cuando la fecha está simulada). */
+export function boClockToday(): string {
+  return isoDate(new Date())
+}
+
+function isoDate(value: Date): string {
+  const p = parts(value, { year: "numeric", month: "2-digit", day: "2-digit" })
   return `${p.year}-${p.month}-${p.day}`
 }
 

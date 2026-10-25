@@ -7,13 +7,13 @@ import { getCurrentPatient } from "@/lib/session"
 import { PhoneStatusBar } from "./phone-status-bar"
 
 /**
- * Cabecera del paciente en el celular (< 640 px y en el marco de /presentacion): logo, avatar y
- * menú ⋮ con el selector de rol. En escritorio se usa la cabecera normal. En modo incrustado se
- * suma la barra de estado falsa y se quita el menú.
+ * Cabecera de la app del paciente: logo, avatar y menú ⋮ con el selector de rol. En escritorio
+ * (celular dibujado bajo la cabecera normal) y en modo incrustado se suma la barra de estado falsa
+ * y se quita el menú, que ya está en la cabecera de la página o en /presentacion.
  */
 export function PatientAppBar() {
   return (
-    <div className="sticky top-0 z-40 bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/85 sm:hidden embed:block">
+    <div className="sticky top-0 z-40 bg-card/95 backdrop-blur supports-backdrop-filter:bg-card/85">
       <PhoneStatusBar />
       <div className="flex h-14 items-center gap-3 border-b px-4">
         <Link href="/paciente" aria-label="Inicio">
@@ -23,7 +23,7 @@ export function PatientAppBar() {
           <Suspense fallback={<Avatar initials="" />}>
             <PatientAvatar />
           </Suspense>
-          <div className="embed:hidden">
+          <div className="sm:hidden embed:hidden">
             <DemoMenu role="paciente" />
           </div>
         </div>
