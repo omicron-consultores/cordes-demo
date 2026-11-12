@@ -1,11 +1,12 @@
 import Link from "next/link"
 import { Suspense } from "react"
-import { CalendarClock, CalendarPlus, ChevronRight, Pill, TriangleAlert } from "lucide-react"
+import { CalendarClock, CalendarPlus, ChevronRight, FlaskConical, Pill, TriangleAlert } from "lucide-react"
 import { DataError } from "@/components/layout/data-error"
 import { AppointmentCard } from "@/components/paciente/appointment-card"
 import { LiveRefresh } from "@/components/paciente/live-refresh"
 import { PRESCRIPTION_ITEM_COLUMNS, PrescriptionItems, PrescriptionStatusBox } from "@/components/paciente/prescription"
 import { buttonVariants } from "@/components/ui/button"
+import { shortStudyName } from "@/lib/exams"
 import { boToday, capitalize, folioLabel, formatDate } from "@/lib/format"
 import { getCurrentPatient, type CurrentPatient } from "@/lib/session"
 import { supabase } from "@/lib/supabase"
@@ -32,6 +33,7 @@ async function PatientHome() {
         <p className="text-muted-foreground">Matrícula {patient.matricula}</p>
       </div>
       <Allergies allergies={patient.allergies} />
+      <NewResult patient={patient} />
       <NextAppointment patient={patient} />
       <LatestPrescription patient={patient} />
     </>
@@ -54,6 +56,45 @@ function Allergies({ allergies }: { allergies: string[] }) {
           Recuérdelo siempre a su médico y en Farmacia.
         </p>
       </div>
+    </section>
+  )
+}
+
+const NEW_RESULT_DAYS = 7
+
+/** Aviso de un resultado de los últimos 7 días (el más reciente), con acceso directo. */
+async function NewResult({ patient }: { patient: CurrentPatient }) {
+  // Desde el inicio del día, hace 7 días, en hora de Bolivia (mismo "hoy" que el resto de la app).
+  const since = new Date(`${boToday()}T00:00:00-04:00`)
+  since.setUTCDate(since.getUTCDate() - NEW_RESULT_DAYS)
+  const { data: order } = await supabase
+    .from("v_diagnostic_orders")
+    .select("id, study_name, resulted_at")
+    .eq("patient_id", patient.id)
+    .eq("status", "resultado")
+    .gte("resulted_at", since.toISOString())
+    .order("resulted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!order) return null
+
+  return (
+    <section aria-label="Resultado nuevo" className="rounded-2xl bg-secondary p-4">
+      <div className="flex gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card text-primary">
+          <FlaskConical className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-lg leading-snug font-semibold">Tiene un resultado nuevo: {shortStudyName(order.study_name!)}</p>
+          <p className="text-sm text-muted-foreground">{capitalize(formatDate(order.resulted_at!))}</p>
+        </div>
+      </div>
+      <Link
+        href={`/paciente/historial?tab=examenes&abrir=${order.id}#examen-${order.id}`}
+        className={buttonVariants({ size: "xl", className: "mt-4 h-14 w-full text-base" })}
+      >
+        Ver resultado
+      </Link>
     </section>
   )
 }

@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation"
 import { useEffect, useId, useRef, useState } from "react"
 import { supabase, type Tables } from "./supabase"
 
-/** Tablas publicadas en Realtime (migración …02_logic.sql): suscribirse a otra no recibe nada. */
-export type RealtimeTable = "appointments" | "prescriptions" | "stock_lots"
+/** Tablas publicadas en Realtime (migraciones …02 y …05): suscribirse a otra no recibe nada. */
+export type RealtimeTable = "appointments" | "prescriptions" | "stock_lots" | "diagnostic_orders"
 
 export type RealtimeChange = RealtimePostgresChangesPayload<Tables<RealtimeTable>>
 

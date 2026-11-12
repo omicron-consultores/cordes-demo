@@ -46,6 +46,16 @@ export function AppointmentCard({
         </div>
       </div>
 
+      {/* Control agendado por el médico al cerrar la consulta (motivo "Control: …"). */}
+      {appt.reason?.startsWith("Control") && (
+        <p className="mt-3 rounded-xl bg-muted/60 px-3 py-2 text-sm">
+          <span className="font-medium">Control indicado por su médico</span>
+          {appt.reason.includes(":") && (
+            <span className="text-muted-foreground"> · {appt.reason.split(":").slice(1).join(":").trim()}</span>
+          )}
+        </p>
+      )}
+
       <dl className="mt-3 space-y-1.5 text-muted-foreground">
         <div className="flex items-start gap-2">
           <dt className="sr-only">Médico</dt>

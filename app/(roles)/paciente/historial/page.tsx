@@ -1,6 +1,8 @@
+import Link from "next/link"
 import { Suspense } from "react"
-import { ChevronDown, ClipboardList, FileText, MapPin, Stethoscope } from "lucide-react"
+import { ChevronDown, ClipboardList, FileText, MapPin, Pill, Stethoscope } from "lucide-react"
 import { DataError } from "@/components/layout/data-error"
+import { PatientExams } from "@/components/paciente/exams"
 import { LiveRefresh } from "@/components/paciente/live-refresh"
 import {
   PRESCRIPTION_ITEM_COLUMNS,
@@ -9,29 +11,69 @@ import {
   type PrescriptionItemRow,
 } from "@/components/paciente/prescription"
 import { PRESCRIPTION_STATUS, StatusPill } from "@/components/paciente/status"
-import { capitalize, folioLabel, formatDayParts, formatShortDate, placeLabel } from "@/lib/format"
-import { getCurrentPatient } from "@/lib/session"
+import { capitalize, folioLabel, formatDate, formatDayParts, formatShortDate, placeLabel } from "@/lib/format"
+import { getCurrentPatient, type CurrentPatient } from "@/lib/session"
 import { supabase, type Views } from "@/lib/supabase"
+import { cn } from "@/lib/utils"
 
 type EncounterRow = Views<"v_encounters">
 
-export default function Page() {
+// La pestaña va en la URL (?tab=examenes): el inicio enlaza directo a un resultado.
+const TABS = [
+  { key: "consultas", label: "Consultas", hint: "Sus consultas médicas." },
+  { key: "recetas", label: "Recetas", hint: "Toque una receta para ver sus medicamentos." },
+  { key: "examenes", label: "Exámenes", hint: "Toque un resultado para ver el detalle." },
+] as const
+type Tab = (typeof TABS)[number]["key"]
+
+export default function Page({ searchParams }: PageProps<"/paciente/historial">) {
   return (
     <main className="space-y-5 px-4 py-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Mi historial</h1>
-        <p className="text-muted-foreground">Sus consultas y recetas. Toque una receta para ver sus medicamentos.</p>
-      </div>
+      <h1 className="text-2xl font-semibold tracking-tight">Mi historial</h1>
+      {/* searchParams es dato de la request: se lee dentro de Suspense (cacheComponents). */}
       <Suspense fallback={<HistorySkeleton />}>
-        <History />
+        <HistoryTabs searchParams={searchParams} />
       </Suspense>
     </main>
   )
 }
 
-async function History() {
+async function HistoryTabs({ searchParams }: { searchParams: PageProps<"/paciente/historial">["searchParams"] }) {
+  const params = await searchParams
+  const tab: Tab = TABS.some((t) => t.key === params.tab) ? (params.tab as Tab) : "consultas"
+  const openId = typeof params.abrir === "string" ? params.abrir : undefined
+
+  return (
+    <>
+      <p className="-mt-4 text-muted-foreground">{TABS.find((t) => t.key === tab)!.hint}</p>
+      <nav aria-label="Secciones del historial" className="grid grid-cols-3 gap-1 rounded-2xl bg-muted p-1">
+        {TABS.map((t) => (
+          <Link
+            key={t.key}
+            href={`/paciente/historial?tab=${t.key}`}
+            replace
+            scroll={false}
+            aria-current={t.key === tab ? "page" : undefined}
+            className={cn(
+              "flex h-12 items-center justify-center rounded-xl text-base font-medium text-muted-foreground transition-colors",
+              t.key === tab && "bg-card text-foreground shadow-sm",
+            )}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </nav>
+      <Suspense key={tab} fallback={<HistorySkeleton />}>
+        <History tab={tab} openId={openId} />
+      </Suspense>
+    </>
+  )
+}
+
+async function History({ tab, openId }: { tab: Tab; openId?: string }) {
   const patient = await getCurrentPatient()
   if (!patient) return <DataError />
+  if (tab === "examenes") return <Exams patient={patient} openId={openId} />
 
   // Solo atenciones cerradas: la receta existe recién al terminar la consulta.
   const [{ data: encounters, error }, { data: places }] = await Promise.all([
@@ -56,6 +98,29 @@ async function History() {
 
   const zones = new Map((places ?? []).map((p) => [p.code, p.zone]))
   const itemsByRx = Map.groupBy(items ?? [], (it) => it.prescription_id!)
+
+  if (tab === "recetas") {
+    const withRx = (encounters ?? []).filter((e) => e.prescription_id)
+    return (
+      <>
+        <LiveRefresh patientId={patient.id} />
+        {withRx.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed p-8 text-center text-muted-foreground">
+            <Pill className="size-7" />
+            Todavía no tiene recetas.
+          </div>
+        ) : (
+          <ol className="space-y-3">
+            {withRx.map((enc) => (
+              <li key={enc.id}>
+                <PrescriptionCard enc={enc} items={itemsByRx.get(enc.prescription_id!) ?? []} />
+              </li>
+            ))}
+          </ol>
+        )}
+      </>
+    )
+  }
 
   return (
     <>
@@ -121,7 +186,19 @@ function EncounterCard({ enc, zone, items }: { enc: EncounterRow; zone: string; 
       </dl>
 
       {enc.prescription_id ? (
-        <PrescriptionDetails enc={enc} items={items} />
+        <Link
+          href="/paciente/historial?tab=recetas"
+          className="mt-4 flex min-h-14 items-center gap-3 rounded-xl border px-3 py-2"
+        >
+          <FileText className="size-5 shrink-0 text-primary" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Receta {folioLabel(enc.prescription_folio!)}</span>
+            <span className="text-sm text-muted-foreground">
+              {items.length} {items.length === 1 ? "medicamento" : "medicamentos"}
+            </span>
+          </span>
+          <StatusPill {...PRESCRIPTION_STATUS[enc.prescription_status!]} />
+        </Link>
       ) : (
         <p className="mt-4 rounded-xl bg-muted/60 px-3 py-2.5 text-sm text-muted-foreground">
           En esta consulta no se recetaron medicamentos.
@@ -131,14 +208,18 @@ function EncounterCard({ enc, zone, items }: { enc: EncounterRow; zone: string; 
   )
 }
 
-function PrescriptionDetails({ enc, items }: { enc: EncounterRow; items: PrescriptionItemRow[] }) {
+/** Pestaña Recetas: una tarjeta por receta, con sus medicamentos al tocarla. */
+function PrescriptionCard({ enc, items }: { enc: EncounterRow; items: PrescriptionItemRow[] }) {
   const status = enc.prescription_status!
   return (
-    <details className="group mt-4 rounded-xl border">
-      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-3 py-2 [&::-webkit-details-marker]:hidden">
+    <details className="group rounded-2xl bg-card shadow-xs ring-1 ring-foreground/5">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-2 [&::-webkit-details-marker]:hidden">
         <FileText className="size-5 shrink-0 text-primary" />
-        <span className="min-w-0 flex-1">
+        <span className="min-w-0 flex-1 py-2">
           <span className="block font-medium whitespace-nowrap">Receta {folioLabel(enc.prescription_folio!)}</span>
+          <span className="block text-sm text-muted-foreground">
+            {capitalize(formatDate(enc.started_at!))} · {enc.doctor_name}
+          </span>
           <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             <StatusPill {...PRESCRIPTION_STATUS[status]} />
             <span className="text-sm text-muted-foreground">
@@ -155,6 +236,21 @@ function PrescriptionDetails({ enc, items }: { enc: EncounterRow; items: Prescri
         </div>
       </div>
     </details>
+  )
+}
+
+async function Exams({ patient, openId }: { patient: CurrentPatient; openId?: string }) {
+  const [orders, results] = await Promise.all([
+    supabase.from("v_diagnostic_orders").select("*").eq("patient_id", patient.id).order("requested_at", { ascending: false }),
+    supabase.from("v_lab_results").select("*").eq("patient_id", patient.id),
+  ])
+  if (orders.error || results.error) return <DataError />
+
+  return (
+    <>
+      <LiveRefresh patientId={patient.id} />
+      <PatientExams orders={orders.data} results={results.data} openId={openId} />
+    </>
   )
 }
 

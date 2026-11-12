@@ -99,6 +99,84 @@ export type Database = {
         }
         Relationships: []
       }
+      diagnostic_orders: {
+        Row: {
+          clinical_note: string | null
+          doctor_id: string | null
+          encounter_id: string | null
+          id: string
+          patient_id: string
+          report: string | null
+          reported_by: string | null
+          requested_at: string
+          resulted_at: string | null
+          status: string
+          study_code: string
+        }
+        Insert: {
+          clinical_note?: string | null
+          doctor_id?: string | null
+          encounter_id?: string | null
+          id?: string
+          patient_id: string
+          report?: string | null
+          reported_by?: string | null
+          requested_at?: string
+          resulted_at?: string | null
+          status?: string
+          study_code: string
+        }
+        Update: {
+          clinical_note?: string | null
+          doctor_id?: string | null
+          encounter_id?: string | null
+          id?: string
+          patient_id?: string
+          report?: string | null
+          reported_by?: string | null
+          requested_at?: string
+          resulted_at?: string | null
+          status?: string
+          study_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_orders_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "v_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_study_code_fkey"
+            columns: ["study_code"]
+            isOneToOne: false
+            referencedRelation: "study_catalog"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       doctors: {
         Row: {
           active: boolean
@@ -371,6 +449,57 @@ export type Database = {
           },
         ]
       }
+      lab_results: {
+        Row: {
+          analyte_code: string
+          analyte_name: string
+          flag: string | null
+          id: string
+          order_id: string
+          ref_high: number | null
+          ref_low: number | null
+          unit: string
+          value: number
+        }
+        Insert: {
+          analyte_code: string
+          analyte_name: string
+          flag?: string | null
+          id?: string
+          order_id: string
+          ref_high?: number | null
+          ref_low?: number | null
+          unit: string
+          value: number
+        }
+        Update: {
+          analyte_code?: string
+          analyte_name?: string
+          flag?: string | null
+          id?: string
+          order_id?: string
+          ref_high?: number | null
+          ref_low?: number | null
+          unit?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lab_results_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_results_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_diagnostic_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medications: {
         Row: {
           active: boolean
@@ -420,14 +549,18 @@ export type Database = {
           chronic_conditions: string[]
           created_at: string
           email: string | null
+          family_history: string | null
           first_names: string
+          habits: string | null
           home_establishment: string | null
           id: string
           insured_type: string
           last_names: string
           matricula: string
+          personal_history: string | null
           phone: string | null
           sex: string
+          surgical_history: string | null
         }
         Insert: {
           address?: string | null
@@ -438,14 +571,18 @@ export type Database = {
           chronic_conditions?: string[]
           created_at?: string
           email?: string | null
+          family_history?: string | null
           first_names: string
+          habits?: string | null
           home_establishment?: string | null
           id?: string
           insured_type: string
           last_names: string
           matricula: string
+          personal_history?: string | null
           phone?: string | null
           sex: string
+          surgical_history?: string | null
         }
         Update: {
           address?: string | null
@@ -456,14 +593,18 @@ export type Database = {
           chronic_conditions?: string[]
           created_at?: string
           email?: string | null
+          family_history?: string | null
           first_names?: string
+          habits?: string | null
           home_establishment?: string | null
           id?: string
           insured_type?: string
           last_names?: string
           matricula?: string
+          personal_history?: string | null
           phone?: string | null
           sex?: string
+          surgical_history?: string | null
         }
         Relationships: [
           {
@@ -689,6 +830,39 @@ export type Database = {
           },
         ]
       }
+      study_catalog: {
+        Row: {
+          analytes: Json | null
+          code: string
+          image_credit: string | null
+          image_path: string | null
+          kind: string
+          loinc: string | null
+          name: string
+          normal_report: string | null
+        }
+        Insert: {
+          analytes?: Json | null
+          code: string
+          image_credit?: string | null
+          image_path?: string | null
+          kind: string
+          loinc?: string | null
+          name: string
+          normal_report?: string | null
+        }
+        Update: {
+          analytes?: Json | null
+          code?: string
+          image_credit?: string | null
+          image_path?: string | null
+          kind?: string
+          loinc?: string | null
+          name?: string
+          normal_report?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_appointments: {
@@ -739,6 +913,52 @@ export type Database = {
           },
         ]
       }
+      v_current_medication: {
+        Row: {
+          concentration: string | null
+          doctor_name: string | null
+          dose: string | null
+          duration_days: number | null
+          ends_on: string | null
+          folio: number | null
+          form: string | null
+          frequency: string | null
+          issued_at: string | null
+          medication_code: string | null
+          medication_name: string | null
+          patient_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_items_medication_code_fkey"
+            columns: ["medication_code"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "prescription_items_medication_code_fkey"
+            columns: ["medication_code"]
+            isOneToOne: false
+            referencedRelation: "v_medication_stock"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "prescription_items_medication_code_fkey"
+            columns: ["medication_code"]
+            isOneToOne: false
+            referencedRelation: "v_top_medications_30d"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "prescriptions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_daily_activity: {
         Row: {
           appointments: number | null
@@ -757,6 +977,65 @@ export type Database = {
           label: string | null
         }
         Relationships: []
+      }
+      v_diagnostic_orders: {
+        Row: {
+          abnormal_count: number | null
+          clinical_note: string | null
+          doctor_id: string | null
+          doctor_name: string | null
+          encounter_id: string | null
+          id: string | null
+          image_credit: string | null
+          image_path: string | null
+          kind: string | null
+          loinc: string | null
+          patient_id: string | null
+          report: string | null
+          reported_by: string | null
+          requested_at: string | null
+          resulted_at: string | null
+          status: string | null
+          study_code: string | null
+          study_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_orders_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "v_encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_study_code_fkey"
+            columns: ["study_code"]
+            isOneToOne: false
+            referencedRelation: "study_catalog"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       v_encounters: {
         Row: {
@@ -856,6 +1135,53 @@ export type Database = {
           waiting_today: number | null
         }
         Relationships: []
+      }
+      v_lab_results: {
+        Row: {
+          analyte_code: string | null
+          analyte_name: string | null
+          flag: string | null
+          id: string | null
+          order_id: string | null
+          patient_id: string | null
+          ref_high: number | null
+          ref_low: number | null
+          resulted_at: string | null
+          study_code: string | null
+          study_name: string | null
+          unit: string | null
+          value: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_orders_study_code_fkey"
+            columns: ["study_code"]
+            isOneToOne: false
+            referencedRelation: "study_catalog"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "lab_results_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "diagnostic_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lab_results_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "v_diagnostic_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_lots: {
         Row: {
@@ -1022,6 +1348,29 @@ export type Database = {
       }
     }
     Functions: {
+      _reset_core: { Args: never; Returns: Json }
+      _simulate_result: {
+        Args: { p_at?: string; p_order_id: string }
+        Returns: {
+          clinical_note: string | null
+          doctor_id: string | null
+          encounter_id: string | null
+          id: string
+          patient_id: string
+          report: string | null
+          reported_by: string | null
+          requested_at: string
+          resulted_at: string | null
+          status: string
+          study_code: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "diagnostic_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       available_slots: {
         Args: { p_date: string; p_doctor_id: string }
         Returns: {
@@ -1175,6 +1524,54 @@ export type Database = {
           to: "stock_lots"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      register_simulated_result: {
+        Args: { p_order_id: string }
+        Returns: {
+          clinical_note: string | null
+          doctor_id: string | null
+          encounter_id: string | null
+          id: string
+          patient_id: string
+          report: string | null
+          reported_by: string | null
+          requested_at: string
+          resulted_at: string | null
+          status: string
+          study_code: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "diagnostic_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      request_studies: {
+        Args: {
+          p_encounter_id: string
+          p_note?: string
+          p_study_codes: string[]
+        }
+        Returns: {
+          clinical_note: string | null
+          doctor_id: string | null
+          encounter_id: string | null
+          id: string
+          patient_id: string
+          report: string | null
+          reported_by: string | null
+          requested_at: string
+          resulted_at: string | null
+          status: string
+          study_code: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "diagnostic_orders"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       reschedule_appointment: {

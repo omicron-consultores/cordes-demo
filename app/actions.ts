@@ -22,9 +22,15 @@ export async function chooseDoctor(license: string) {
   redirect("/medico")
 }
 
-/** Restaura todos los datos de la demo (reset_demo). Devuelve el error de la BD tal cual. */
+/**
+ * Restaura todos los datos de la demo (reset_demo). Devuelve el error de la BD tal cual, salvo el
+ * timeout de Postgres (57014), que llega en inglés.
+ */
 export async function resetDemo(): Promise<{ ok: true } | { ok: false; error: string }> {
   const { error } = await supabase.rpc("reset_demo")
+  if (error?.code === "57014") {
+    return { ok: false, error: "El reinicio tardó demasiado y se canceló. Intente de nuevo en unos segundos." }
+  }
   if (error) return { ok: false, error: error.message }
   revalidatePath("/", "layout")
   return { ok: true }

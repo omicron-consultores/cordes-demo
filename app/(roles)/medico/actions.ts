@@ -65,6 +65,27 @@ export async function completeEncounter(
   return { ok: true, folio: rx?.folio_label ?? null }
 }
 
+/**
+ * Botón de demo "Registrar resultado (simulado)": el laboratorio o Radiología informa el estudio
+ * (register_simulated_result). Devuelve el nombre del estudio y si quedó algo fuera de rango.
+ */
+export async function registerSimulatedResult(
+  orderId: string,
+): Promise<{ ok: true; study: string; abnormal: number } | { ok: false; error: string }> {
+  if (!z.uuid().safeParse(orderId).success) return { ok: false, error: "Estudio no válido" }
+
+  const { error } = await supabase.rpc("register_simulated_result", { p_order_id: orderId })
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath("/medico/atencion/[id]", "page")
+  const { data } = await supabase
+    .from("v_diagnostic_orders")
+    .select("study_name, abnormal_count")
+    .eq("id", orderId)
+    .maybeSingle()
+  return { ok: true, study: data?.study_name ?? "Estudio", abnormal: data?.abnormal_count ?? 0 }
+}
+
 /** Constancia para Farmacia cuando el médico confirmó recetar pese a una alergia. */
 async function allergyNote(codes: string[]): Promise<string | undefined> {
   if (!codes.length) return undefined

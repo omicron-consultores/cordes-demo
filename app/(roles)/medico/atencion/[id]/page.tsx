@@ -5,13 +5,15 @@ import { CONTAINER } from "@/components/layout/container"
 import { DataError } from "@/components/layout/data-error"
 import { EncounterForm, type LastVitals } from "@/components/medico/encounter-form"
 import { EncounterSummary } from "@/components/medico/encounter-summary"
-import { PatientContext, type PastEncounter } from "@/components/medico/patient-context"
+import type { PastEncounter } from "@/components/medico/encounter-timeline"
+import { PatientContext } from "@/components/medico/patient-context"
 import { StatusPill } from "@/components/paciente/status"
 import { buttonVariants } from "@/components/ui/button"
+import { examTarget, flaggedStudies, groupLabResults } from "@/lib/exams"
 import { age, formatDateTime, formatTime } from "@/lib/format"
 import { supabase } from "@/lib/supabase"
 
-const HISTORY_LIMIT = 10
+const HISTORY_LIMIT = 50
 
 export default function Page({ params }: PageProps<"/medico/atencion/[id]">) {
   return (
@@ -33,7 +35,7 @@ async function Encounter({ params }: { params: Promise<{ id: string }> }) {
   if (error) return <DataError />
   if (!encounter) return <DataError message="No se encontró la atención. Vuelva a la agenda e iníciela de nuevo." />
 
-  const [patient, history, cie10, medications] = await Promise.all([
+  const [patient, history, cie10, medications, orders, labResults, studyCatalog] = await Promise.all([
     supabase.from("patients").select("*").eq("id", encounter.patient_id!).single(),
     supabase
       .from("v_encounters")
@@ -48,28 +50,58 @@ async function Encounter({ params }: { params: Promise<{ id: string }> }) {
       .from("v_medication_stock")
       .select("code, name, form, concentration, available, stock_status, allergen_group")
       .order("name"),
+    supabase
+      .from("v_diagnostic_orders")
+      .select("*")
+      .eq("patient_id", encounter.patient_id!)
+      .order("requested_at", { ascending: false }),
+    supabase.from("v_lab_results").select("*").eq("patient_id", encounter.patient_id!),
+    supabase.from("study_catalog").select("code, analytes"),
   ])
-  if (patient.error || history.error || cie10.error || medications.error) return <DataError />
+  if (
+    patient.error ||
+    history.error ||
+    cie10.error ||
+    medications.error ||
+    orders.error ||
+    labResults.error ||
+    studyCatalog.error
+  )
+    return <DataError />
 
   const rxIds = history.data.flatMap((e) => (e.prescription_id ? [e.prescription_id] : []))
   const items = rxIds.length
     ? await supabase
         .from("v_prescription_items")
-        .select("prescription_id, medication_name, concentration, quantity_prescribed")
+        .select(
+          "prescription_id, medication_name, concentration, form, dose, frequency, duration_days, quantity_prescribed, quantity_dispensed",
+        )
         .in("prescription_id", rxIds)
         .order("line_no")
     : { data: [], error: null }
   if (items.error) return <DataError />
 
   const itemsByRx = Map.groupBy(items.data, (it) => it.prescription_id!)
+  const ordersByEnc = Map.groupBy(orders.data, (o) => o.encounter_id)
   const past: PastEncounter[] = history.data.map((e) => ({
     ...e,
-    medications: e.prescription_id
-      ? (itemsByRx.get(e.prescription_id) ?? []).map((it) =>
-          [it.medication_name, it.concentration].filter(Boolean).join(" "),
-        )
-      : [],
+    lines: (e.prescription_id ? (itemsByRx.get(e.prescription_id) ?? []) : []).map((it) => ({
+      name: [it.medication_name, it.concentration].filter(Boolean).join(" "),
+      form: it.form!,
+      detail: [it.dose, it.frequency, it.duration_days && `${it.duration_days} días`].filter(Boolean).join(", "),
+      prescribed: it.quantity_prescribed!,
+      dispensed: it.quantity_dispensed ?? 0,
+    })),
+    studies: (ordersByEnc.get(e.id) ?? []).map((o) => ({
+      id: o.id!,
+      name: o.study_name!,
+      kind: o.kind!,
+      status: o.status!,
+      abnormal: o.abnormal_count ?? 0,
+      target: examTarget(o),
+    })),
   }))
+  const lab = groupLabResults(labResults.data, studyCatalog.data)
 
   const p = patient.data
   const closed = encounter.finished_at !== null
@@ -94,7 +126,14 @@ async function Encounter({ params }: { params: Promise<{ id: string }> }) {
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <PatientContext patient={p} history={past} />
+        <PatientContext
+          patient={p}
+          history={past}
+          specialty={encounter.specialty_name}
+          orders={orders.data}
+          lab={lab}
+          flaggedStudies={flaggedStudies(orders.data, lab)}
+        />
         {closed ? (
           <EncounterSummary encounter={encounter} />
         ) : (

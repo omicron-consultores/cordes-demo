@@ -18,8 +18,14 @@ Ante la duda, elegir siempre lo más simple que funcione bien en la presentació
 
 ## Base de datos (fuente de verdad: `supabase/migrations/`)
 
-- `…01_schema.sql` tablas · `…02_logic.sql` funciones RPC y vistas · `…03_seed.sql` `reset_demo()` · `…04_horario_y_casos.sql` horario configurable (`demo_schedule()`, `day_slots()`, `available_slots()`), nueva `reset_demo()` y más casos sembrados
+- `…01_schema.sql` tablas · `…02_logic.sql` funciones RPC y vistas · `…03_seed.sql` `reset_demo()` · `…04_horario_y_casos.sql` horario configurable (`demo_schedule()`, `day_slots()`, `available_slots()`), nueva `reset_demo()` y más casos sembrados · `…05_examenes_antecedentes.sql` exámenes (laboratorio e imagen), antecedentes y tratamiento actual · `…06_reset_timeout.sql` `statement_timeout` de 60 s solo para `reset_demo()` (el rol `anon` corta a los 3 s)
 - **Horario de consulta**: lun–vie 08:00–19:00, cupos de 20 min (33 por día). Se define **solo** en `demo_schedule()`; el front nunca fija horas ni cantidad de cupos: los horarios salen siempre de `available_slots`. Para cambiarlo: editar `demo_schedule()` y ejecutar `reset_demo()`.
+- **Exámenes y antecedentes (005)**:
+  - `patients` suma antecedentes en texto libre: `personal_history`, `surgical_history`, `family_history`, `habits`.
+  - `study_catalog`: catálogo de estudios (`code` tipo `LAB-GLU` / `IMG-RXT`, `kind` = `laboratorio` | `imagen`, LOINC referencial, `analytes` jsonb con rangos, informe normal e imagen de ejemplo en `/public/studies/`).
+  - `diagnostic_orders`: estudios solicitados (`status` = `solicitado` | `resultado`; `encounter_id` puede ser nulo si se pidió fuera de consulta) con su informe.
+  - `lab_results`: valores por analito con rango; `flag` (`bajo` | `alto` | `normal`) es columna generada.
+  - Vistas: `v_diagnostic_orders` (con `study_name`, `kind`, `doctor_name`, `abnormal_count`), `v_lab_results` (con `patient_id`, `study_name`, `resulted_at`), `v_current_medication` (última indicación vigente por medicamento, 10 días de margen).
 - `supabase/tests/flujo_demo.sql`: prueba de punta a punta (corre en transacción y hace rollback).
 - Documentación del modelo: `docs/modelo-datos.md`.
 
@@ -28,12 +34,12 @@ Ante la duda, elegir siempre lo más simple que funcione bien en la presentació
 - **Escrituras de negocio: SOLO por RPC** (`supabase.rpc(...)`), nunca `insert/update` directo en esas tablas:
   `book_appointment`, `reschedule_appointment`, `cancel_appointment`, `mark_no_show`,
   `start_encounter`, `complete_encounter`, `dispense_prescription`, `cancel_prescription`,
-  `receive_stock`, `write_off_expired_lot`, `reset_demo`. La lógica y las validaciones viven en la BD.
+  `receive_stock`, `write_off_expired_lot`, `request_studies`, `register_simulated_result` (botón de demo "Registrar resultado (simulado)"), `reset_demo`. La lógica y las validaciones viven en la BD.
 - Excepción permitida: editar datos de contacto del paciente (`patients.phone/email/address`) con `update` directo.
 - Los errores de las RPC llegan en español (`raise exception`): mostrarlos tal cual en un toast.
 - Tipos: `lib/database.types.ts` generado con `npx supabase gen types typescript --project-id <id>`. No escribir tipos de tablas a mano.
 - Zona horaria de negocio: `America/La_Paz` (UTC−4). Usar `bo_today()` en SQL; en el front, formatear siempre en esa zona.
-- Realtime habilitado en `appointments`, `prescriptions`, `stock_lots`: la bandeja de Farmacia y el dashboard se suscriben y se refrescan solos (efecto demo entre dos dispositivos).
+- Realtime habilitado en `appointments`, `prescriptions`, `stock_lots`, `diagnostic_orders`: la bandeja de Farmacia, el dashboard y la app del paciente se suscriben (`useRealtimeRefresh`) y se refrescan solos (efecto demo entre dos dispositivos).
 
 ## Datos
 
@@ -41,7 +47,7 @@ Ante la duda, elegir siempre lo más simple que funcione bien en la presentació
 - **Ficticios**: pacientes, médicos, citas, atenciones, recetas, lotes y vencimientos.
 - Nunca introducir personas reales ni datos personales reales.
 - Paciente protagonista: **María Elena Quispe Rojas** (matrícula `CBA-104523`, HTA + DM2, **alérgica a penicilinas**), médico por defecto **Dr. Jorge Andrés Villarroel Soria** (Medicina Interna, Cala Cala).
-- Casos sembrados para la presentación: receta pediátrica con Dicloxacilina suspensión (solo 2 frascos → dispensación parcial), una receta ya parcial, lote de Azitromicina vencido sin baja, 5 lotes por vencer en menos de 90 días, Insulina glargina y Amoxicilina suspensión bajo mínimo. Desde la 004: María Elena tiene control **hoy** con el Dr. Villarroel (primer cupo libre ≥ 30 min después del reset, o el siguiente día hábil), citas reprogramadas y una receta anulada.
+- Casos sembrados para la presentación: receta pediátrica con Dicloxacilina suspensión (solo 2 frascos → dispensación parcial), una receta ya parcial, lote de Azitromicina vencido sin baja, 5 lotes por vencer en menos de 90 días, Insulina glargina y Amoxicilina suspensión bajo mínimo. Desde la 004: María Elena tiene control **hoy** con el Dr. Villarroel (primer cupo libre ≥ 30 min después del reset, o el siguiente día hábil), citas reprogramadas y una receta anulada. Desde la 005: María Elena tiene antecedentes completos, exámenes previos con valores coherentes con sus notas (p. ej. LDL 162) y 2 estudios **pendientes** (HbA1c y función renal) para completar en vivo; ~35 % de las atenciones de otros pacientes tienen estudios.
 
 ## Roles y rutas
 
@@ -49,9 +55,9 @@ Sin autenticación. La pantalla `/` es un **selector de rol** (y de persona: pac
 
 | Rol | Rutas | Dispositivo |
 |---|---|---|
-| Paciente | `/paciente` (inicio: próxima cita y receta lista), `/paciente/citas` (listar, **agendar**, reprogramar, cancelar), `/paciente/historial` (atenciones y recetas, solo lectura), `/paciente/perfil` | **Mobile-first** (diseñar a 390 px; navegación inferior) |
+| Paciente | `/paciente` (inicio: aviso de resultado nuevo de los últimos 7 días, próxima cita —incluye controles agendados por el médico— y receta lista), `/paciente/citas` (listar, **agendar**, reprogramar, cancelar), `/paciente/historial` (pestañas Consultas · Recetas · Exámenes en `?tab=`; `&abrir=<order_id>` abre un resultado; solo lectura), `/paciente/perfil` | **Mobile-first** (diseñar a 390 px; navegación inferior) |
 | Admisión | `/admision`: agenda del día por establecimiento y médico, agendar por ventanilla, marcar no asistió | Escritorio |
-| Médico | `/medico` (agenda del día) → `/medico/atencion/[id]` (antecedentes, historial, signos vitales, CIE-10, receta) | Escritorio |
+| Médico | `/medico` (agenda del día) → `/medico/atencion/[id]` (izquierda en pestañas Resumen · Consultas · Exámenes con scroll propio; derecha: signos vitales, CIE-10, receta) | Escritorio |
 | Farmacia | `/farmacia` (bandeja de recetas) → `/farmacia/receta/[id]` (dispensar); `/farmacia/inventario` (stock, lotes, vencimientos, ingreso, baja) | Escritorio |
 | Gerencia | `/gerencia`: KPIs del día, actividad 30 días, top medicamentos, diagnósticos, alertas | Escritorio |
 
@@ -65,6 +71,7 @@ Escritorio también debe verse correcto en tablet; el rol Paciente debe verse co
 4. Al cerrar la atención (`complete_encounter`), la receta entra en la bandeja de Farmacia **sin recargar** (realtime).
 5. Farmacia dispensa (`dispense_prescription`, FEFO por lote). Si falta stock → resultado "parcial" con el faltante explícito.
 6. El inventario y el dashboard reflejan el descuento al instante. El paciente ve su receta como "Lista para recoger / Entregada".
+7. El médico registra un resultado ("Registrar resultado (simulado)") → aparece solo en el celular del paciente (Historial › Exámenes y aviso en el inicio). Al paciente se le muestra en lenguaje simple: "Dentro de lo normal" (verde) o "Fuera del rango normal" (ámbar, nunca rojo) con "Consúltelo con su médico en su próximo control"; sin interpretaciones clínicas.
 
 ## Diseño
 
